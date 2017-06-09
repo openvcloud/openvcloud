@@ -1,0 +1,9 @@
+@usedefault
+{% if id %}
+
+@@title Group: ${id}
+
+{{include:group space:system}}
+{% else %}
+No Group provided
+{% endif %}

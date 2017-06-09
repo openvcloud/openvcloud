@@ -1,0 +1,90 @@
+@usedefault
+@@title Stack: ${name}
+{{stack_data}}
+{% if id %}
+
+h3. Stack: ${name}
+{% if status != 'DECOMMISSIONED' %}
+{{actions:
+
+{% if status in ['MAINTENANCE', 'ERROR'] %}
+- display: Enable
+  action: /restmachine/cloudbroker/computenode/enable
+  reload: false
+  data:
+   id: $$id
+   gid: ${gid}
+  input:
+   - type: text
+     name: message
+     label: Reason
+     required: true
+{% endif %}
+
+{% if status in ['ERROR', 'ENABLED'] %}
+- display: Put in Maintenance
+  action: /restmachine/cloudbroker/computenode/maintenance
+  reload: false
+  data:
+   id: ${id}
+   gid: ${gid}
+  input:
+   - type: message
+     messagetype: warning
+     message: Putting Node in Maintenance!</br>
+              This will prevent new Virtual Machines to be created on this Node!</br>
+              All Virtual Machines running on this Node will be moved or turned off.
+   - type: dropdown
+     name: vmaction
+     label: Virtual Machine Action
+     values:
+      - value: move
+        label: Move All Virtual Machines
+      - value: stop
+        label: Stop All Virtual Machines
+
+   - type: text
+     name: message
+     required: true
+     label: Reason
+{% endif %}
+
+- display: Decommission
+  action: /restmachine/cloudbroker/computenode/decommission
+  data:
+   id: ${id}
+   gid: ${gid}
+  input:
+   - type: message
+     messagetype: danger
+     message: Decommissioning a Node is irreversible.</br>
+              This action is only possible on a powered down node.</br>
+              You will NOT be able to reenable this node!</br>
+              All Virtual Machines will be moved to another node.
+   - type: text
+     name: message
+     required: true
+     label: Reason
+}}
+{% endif %}
+
+* *ApiURL*: ${apiUrl}
+* *Description*: ${descr}
+* *ReferenceId*: [${gid}:${referenceId}|/grid/Grid Node?id=${referenceId}&gid=${gid}]
+{% if eco -%}
+* *Status*: [${status}|/grid/Error Condition?id=${eco}]
+{% else -%}
+* *Status*: ${status}
+{% endif %}
+
+h3. Images:
+
+{{images: stackid:${id}}}
+
+h3. Virtual Machines:
+
+{{vmachines: stackid:${id}}}
+
+{% else %}
+No Stack provided
+{% endif %}

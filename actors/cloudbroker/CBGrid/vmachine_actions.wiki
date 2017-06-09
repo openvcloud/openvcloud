@@ -1,0 +1,294 @@
+
+{{actions:
+- display: Start
+  input:
+  - reason
+  action: /restmachine/cloudbroker/machine/start
+  hideon:
+  - RUNNING
+  hideonInput: ${status}
+  data:
+   machineId: $$id
+
+- display: Stop
+  action: /restmachine/cloudbroker/machine/stop
+  hideon:
+  - HALTED
+  hideonInput: ${status}
+  data:
+   machineId: $$id
+  input:
+  - reason
+
+#- display: Stop For Abusive Resource Usage
+#  action: /restmachine/cloudbroker/machine/stopForAbusiveResourceUsage
+#  hideon:
+#  - HALTED
+#  data:
+#   machineId: $$id
+#   accountId: ${accountId}#
+#
+#  input:
+#  - reason
+
+- display: Reboot
+  action: /restmachine/cloudbroker/machine/reboot
+  data:
+   machineId: $$id
+  input:
+  - reason
+
+- display: Pause
+  action: /restmachine/cloudbroker/machine/pause
+  hideon:
+  - HALTED
+  - ERROR
+  - PAUSED
+  hideonInput: ${status}
+  data:
+   machineId: $$id
+  input:
+  - reason
+
+- display: Resume
+  action: /restmachine/cloudbroker/machine/resume
+  hideon:
+  - HALTED
+  - RUNNING
+  - ERROR
+  hideonInput: ${status}
+  data:
+   machineId: $$id
+  input:
+  - reason
+
+- display: Delete
+  action: /restmachine/cloudbroker/machine/destroy
+  data:
+   machineId: $$id
+  input:
+  - reason
+
+- display: Snapshot
+  action: /restmachine/cloudbroker/machine/snapshot
+  hide: true
+  data:
+   machineId: $$id
+  input:
+  - name: snapshotName
+    label: Name
+    type: text
+  - reason
+
+- display: Rollback Snapshot
+  action: /restmachine/cloudbroker/machine/rollbackSnapshot
+  hide: true
+  reload: false
+  data:
+   machineId: $$id
+  input:
+  - name: reason
+    label: Reason
+    type: text
+
+
+- display: Delete Snapshot
+  action: /restmachine/cloudbroker/machine/deleteSnapshot
+  hide: true
+  reload: false
+  input:
+  - name: reason
+    label: Reason
+    type: text
+  data:
+   machineId: $$id
+
+- display: Clone
+  action: /restmachine/cloudbroker/machine/clone
+  data:
+   machineId: $$id
+  input:
+  - reason
+  - cloneName
+
+#- display: Backup And Destroy
+#  action: /restmachine/cloudbroker/machine/backupAndDestroy
+#  data:
+#   accountId: ${accountId}
+#   machineId: $$id
+#  input:
+#  - reason
+
+- display: Create Portforwarding
+  action: /restmachine/cloudbroker/machine/createPortForward
+  hide: true
+  data:
+   machineId: $$id
+  input:
+  - name: destPort
+    type: number
+    label: Public Port
+  - name: localPort
+    type: number
+    label: VM Port
+  - name: proto
+    type: dropdown
+    label: Protocol
+    values:
+     - label: TCP
+       value: tcp
+     - label: UDP
+       value: udp
+  - reason
+
+
+- display: Delete Portforwarding
+  action: /restmachine/cloudbroker/machine/deletePortForward
+  hide: true
+  reload: false
+  data:
+   machineId: $$id
+
+- display: Add Disk
+  action: /restmachine/cloudbroker/machine/addDisk
+  hide: true
+  data:
+   machineId: $$id
+  input:
+  - name: diskName
+    label: Name
+    type: text
+  - name: description
+    type: text
+    label: Description
+  - name: size
+    label: Size
+    type: number
+  - name: iops
+    label: Max IOPS
+    type: number
+
+- display: Delete Disk
+  action: /restmachine/cloudbroker/machine/deleteDisk
+  reload: false
+  hide: true
+  data:
+   machineId: $$id
+- display: Convert To Template
+  action: /restmachine/cloudbroker/machine/convertToTemplate
+  data:
+   machineId: $$id
+  input:
+  - templateName
+  - reason
+
+- display: Update Machine
+  action: /restmachine/cloudbroker/machine/updateMachine
+  data:
+   machineId: $$id
+  input:
+  - name: name
+    label: Name
+    type: text
+  - name: description
+    label: description
+    type: text
+  - name: reason
+    label: Reason
+    type: text
+
+{% if status == 'HALTED' %}
+- display: Resize Machine
+  action: '#resizemachine'
+
+{% endif %}
+
+# def exportOVF(self, link, username, passwd, path, machineId, callbackUrl, **kwargs):
+- display: Export
+  action: /restmachine/cloudapi/machines/exportOVF
+  reload: false
+  data:
+   machineId: $$id
+  input:
+  - name: link
+    label: Link to export machine to
+    type: text
+  - name: path
+    type: text
+    label: Path where the ovf should be stored
+  - name: username
+    label: Username of export server
+    type: text
+  - name: passwd
+    type: password
+    label: Password of the export server
+
+# - display: Restore
+#   action: ./
+#   data:
+#    machineId: $$id
+#   input:
+#   - exportName
+
+
+
+- display: Move to another CPU node
+  action: "#movemachine"
+
+- display: Tag
+  action: /restmachine/cloudbroker/machine/tag
+  data:
+   machineId: $$id
+  input:
+  - tagName
+
+- display: Remove Tag
+  action: /restmachine/cloudbroker/machine/untag
+  data:
+   machineId: $$id
+  input:
+  - tagName
+
+- display: Attach To External Network
+  action: /restmachine/cloudbroker/machine/attachExternalNetwork
+  reload: true
+  hide: true
+  data:
+   machineId: $$id
+
+- display: Detach From External Network
+  action: /restmachine/cloudbroker/machine/detachExternalNetwork
+  hide: true
+  reload: false
+  data:
+   machineId: $$id
+
+- display: Grant User Access
+  hide: true
+  action: /restmachine/cloudbroker/machine/addUser
+  data:
+   machineId: $$id
+  input:
+  - name: username
+    label: Username or email address (an invitation will be sent to unregistered emails)
+    type: text
+  - name: accesstype
+    label: ACL
+    type: dropdown
+    values:
+     - label: Admin
+       value: ARCXDU
+     - label: Write
+       value: RCX
+     - label: Read
+       value: R
+
+- display: Revoke User Access
+  action: /restmachine/cloudbroker/machine/deleteUser
+  hide: true
+  data:
+   machineId: $$id
+}}
+
+{{movemachine: machineId:$$id}}
+{{resizemachine: machineId:$$id}}

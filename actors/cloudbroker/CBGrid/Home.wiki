@@ -1,0 +1,74 @@
+@usedefault
+
+h4. Dashboard
+@row clearfix
+
+@col 4
+h6. Active Accounts
+{{nraccountgauge: id:1 width:100 height:100}}
+@colend
+
+@col 4
+h6. Running Virtual Machines
+#*From Total Deployed:45*
+{{nrvmgauge: id:3 width:100 height:100}}
+@colend
+
+@col 4
+h6. Running Windows VMs
+{{nrwinvmgauge: id:4 width:100 heigth:100}}^M
+@colend
+@rowend
+
+{{html: <hr />}}
+
+@row gray-background clearfix
+@col 6
+h4. Monitoring
+
+{{html: <p><a href="/grid/Status Overview"><i class="glyphicon glyphicon-dashboard margin-right-small"></i>Status Overview</a></p> }}
+
+@colend
+@col 6
+h4. Actions
+{{actions:
+- display: Add User
+  action: "#user_create"
+
+- display: Add Account
+  action: '#createaccount'
+}}
+
+{{createaccount}}
+{{user_create: noreload}}
+@colend
+@rowend
+
+{{html: <hr />}}
+
+
+h4. Locations
+
+{{locations}}
+
+{{html: <hr />}}
+
+h4. Accounts
+
+{{cbgrid.accounts}}
+
+{{cssstyle
+	h6.title{
+		min-height: 42px;
+	}
+	p{
+	    margin-left: 5px;
+	}
+	select{
+		border-radius: 6px;
+    	padding: 4px 10px;
+	}
+	.gray-background{
+		background-color: #F9F9F9;
+	}
+}}

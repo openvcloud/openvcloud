@@ -1,0 +1,69 @@
+@usedefault
+@@title Image: ${name}
+{{image_data}}
+{% if id %}
+h3. Image: ${name}
+
+{{actions:
+- display: Image Availability
+  action: '#image_update_cpu_nodes'
+
+- display: Rename
+  input:
+  - name: name
+    label: Name
+    type: text
+  - type: text
+    name: reason
+    label: Reason
+  action: /restmachine/cloudbroker/image/rename
+  data:
+   imageId: $$id
+
+- display: Enable
+  input:
+  - reason
+  action: /restmachine/cloudbroker/image/enable
+  hideon:
+  - CREATED
+  hideonInput: ${status}
+  data:
+   imageId: $$id
+
+- display: Disable
+  input:
+  - reason
+  action: /restmachine/cloudbroker/image/disable
+  hideon:
+  - DISABLED
+  hideonInput: ${status}
+  data:
+   imageId: $$id
+
+- display: Delete
+  input:
+  - reason
+  action: /restmachine/cloudbroker/image/delete
+  data:
+   imageId: $$id
+
+}}
+
+{{image_update_cpu_nodes: imageId:$$id}}
+
+* *Description*:${description}
+* *Type*:       ${type}
+* *Size*:       ${size}
+* *Status*:     ${status or "CREATED"}
+* *ReferenceId*:${referenceId}
+
+h4. Stacks which have this Image
+
+{{stacks imageid:$$id}}
+
+h4. Virtual Machines which use this image
+{{vmachines imageid:$$id}}
+
+{% else %}
+No Image provided
+{% endif %}

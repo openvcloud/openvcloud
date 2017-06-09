@@ -1,0 +1,40 @@
+@usedefault
+@@title User: ${id}
+
+{{timestamp}}
+
+{{user_info}}
+{% if id %}
+h2. User: ${id}
+
+{{actions:
+- display: Edit User
+  action: '#user_edit'
+
+- display: Delete
+  action: /restmachine/cloudbroker/user/delete?username=$$id
+  navigateback: true
+
+- display: Send Reset Password Link
+  action: /restmachine/cloudbroker/user/sendResetPasswordLink
+  data:
+   username: ${id}
+   email: ${emails}
+}}
+{{user_edit: guid:$$id}}
+
+|*Groups*|${", ".join(groups)} |
+|*Emails*|${", ".join(emails)} |
+|*Authkey*|${authkey} |
+|*Last Checked*|{{div: class=jstimestamp|data-ts=${lastcheck}}}{{div}}|
+|*Active*|${active}|
+
+h3. Accounts
+{{accounts: acl.userGroupId:${id}}}
+
+h3. Cloud Spaces
+{{cbspacesusers: userId:${id}}}
+
+{% else %}
+No user found with id $$id
+{% endif %}

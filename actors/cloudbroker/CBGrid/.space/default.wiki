@@ -1,0 +1,33 @@
+
+
+{{title:CBGrid - $$page}}
+{{ApplyFlatTheme}}
+
+{{logo:/system/.files/img/green.png}}
+{{PortalsHamburgerMenu}}
+{{menu:
+Cloud Broker Portal:/cbgrid
+}}
+
+{{menuadmin:
+}}
+{{menuspaces: class:brand name:Cloudbroker%20Grid marker:$$$spaces}}
+
+@block
+@row
+
+@col 12 content
+{{breadcrumbs}}
+{content}
+
+@divend
+@divend
+
+
+{{cssstyle
+td {
+    max-width:500px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;}
+}}

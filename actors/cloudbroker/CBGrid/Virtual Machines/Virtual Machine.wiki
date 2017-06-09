@@ -1,0 +1,90 @@
+@usedefaults
+@@title Virtual Machine: ${name}
+{{vmachine}}
+{% if id %}
+
+{% if status != "DESTROYED" %}
+
+{{include:vmachine_actions}}
+
+{% endif %}
+
+h2. Virtual Machine: ${name}
+
+{% if not refreshed %}
+{{html:
+<div class="alert alert-warning" role="alert">Failed to retreive current status and snapshots, could not reach node ${stackname} to refresh data.</div>
+}}
+{% endif %}
+
+|*ID*| ${id}|
+|*Description*| ${descr}|
+|*Tags*| ${tags}|
+|*Stack*| [${stackname}|stack?id=${stackId}]|
+|*Account*| [${accountName}|account?id=${accountId}]|
+|*Cloud Space*| [${spacename}|cloud space?id=${cloudspaceId}]|
+|*Creation Time*|{{ts: ${creationTime}}}|
+|*Update Time*|{{ts: ${updateTime}}}|
+|*Deletion Time*| ${deleteTime}|
+{% if accounts -%}
+|*Initial Credentials*| {{html: <span class="margin-right-xlarge"><strong>Login:</strong> ${accounts[0].login}</span> <strong>Password:</strong> ${accounts[0].password}}}|
+{% endif -%}
+|*Size*| ${size}|
+|*Image*| [${image.name}|image?id=${image.referenceId}]|
+|*Status*| ${status}|
+|*Host Name*| ${hostName}|
+|*Hypervisor Type*| ${hypervisortype}|
+|*Status Check*|${stats_state}|
+|*Ping*|${stats_ping}|
+|*Hard Drive Test*|${stats_hdtest}|
+|*Last Checked*|${stats_epoch}|
+
+h3. Users Access
+{{action: id:'action-GrantUserAccess' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Grant User Access'}}
+||User Name||E-Mail||ACL||Status||Revoke Access||
+{% for user in users -%}
+    | {%if user.userstatus!='INVITED' %} [${user.id}|/CBGrid/user?id=${user.id}] {%else%} ${user.id} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{% if user.accessUserType == 'acc' %} User access via account [page |account?id=${accountId}] {% elif user.accessUserType == 'cl' %} User access via cloud space [page |cloud space?id=${cloudspaceId}] {% else %} {{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.id}' class:'glyphicon glyphicon-remove'}} {% endif %}|
+{% endfor %}
+
+h3. NICs
+{{action id:'action-AttachToExternalNetwork' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Attach To External Network'}}
+||Name||MAC Address||IP Address||Gateway||Delete||
+{%for nic in nics -%}
+|${nic.deviceName}|${nic.macAddress}|${nic.ipAddress}|${nic.gateway}|${nic.action}|
+{% endfor %}
+
+
+h3. Disks
+{{action id:'action-AddDisk' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Create Disk'}}
+||Name||Size||Type||Max IOPS||Path||Delete||
+{%for disk in disks -%}
+|${disk.name}|${disk.sizeMax} GiB|${disk.type}|${disk.iops}|${disk.referenceId}| {% if disk.type == 'Data' %} {{action deleterow:true id:'action-DeleteDisk' data-diskId:'${disk.id}' class:'glyphicon glyphicon-remove'}} {% endif %}|
+{% else -%}
+| | | | | | |
+{% endfor %}
+
+h3. Snapshots
+{{action id:'action-Snapshot' class:'glyphicon glyphicon-camera margin-bottom-medium margin-left-medium' label:'Create Snapshot'}}
+
+||Name||Time||Actions||
+{% for snapshot in snapshots -%}
+|${snapshot.name}|{{ts:${snapshot.epoch}}}|{{action: id:'action-RollbackSnapshot' class:'glyphicon glyphicon-repeat' data-epoch:'${snapshot.epoch}'}}{{action: id:'action-DeleteSnapshot' deleterow:true class:'glyphicon glyphicon-remove' data-epoch:'${snapshot.epoch}'}}|
+{% else -%}
+| | | |
+{% endfor %}
+
+h3. Port Forwards
+{{action id:'action-CreatePortforwarding' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Create Portforward'}}
+||Public IP||Public Port||VM IP||VM Port||Protocol||Delete||
+{% for portforward in portforwards -%}
+|${portforward.fromAddr}|${portforward.fromPort}|${portforward.toAddr}|${portforward.toPort}|${portforward.protocol.upper()}|{{action: id:'action-DeletePortforwarding' deleterow:true class:'glyphicon glyphicon-remove' data-publicIp:'${portforward.fromAddr}' data-publicPort:'${portforward.fromPort}' data-proto:'${portforward.protocol}'}}|
+{% else -%}
+| | | | | | |
+{% endfor %}
+
+h3. Audits
+{{grid.audits machineId:${id}}}
+
+{% else %}
+No Virtual Machine found
+{% endif %}

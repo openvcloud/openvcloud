@@ -1,0 +1,84 @@
+@usedefault
+{{network}}
+{{datatables_use}}
+{% if id %}
+
+h2. Private Network: ${id} (${'%04x' % id})
+
+{{actions:
+
+{% if not running %}
+- display: Start VFW
+  action: /restmachine/cloudbroker/cloudspace/startVFW
+  input:
+  - reason
+  data:
+   cloudspaceId: ${domain}
+
+{% else %}
+- display: Stop VFW
+  action: /restmachine/cloudbroker/cloudspace/stopVFW
+  input:
+  - reason
+  data:
+   cloudspaceId: ${domain}
+{% endif %}
+
+- display: Move VFW
+  action: '#movevfw'
+
+- display: Reset VFW
+  action: /restmachine/cloudbroker/cloudspace/resetVFW
+  reload: false
+  data:
+   async: True
+   cloudspaceId: ${domain}
+  input:
+  - type: message
+    messagetype: warning
+    message: Resetting VFW has major consequences!</br>
+             Be aware that the external IP address of the network might change.</br>
+             All existing port forwards and IP adresses asigned to virtual machines will be broken.
+  - reason
+
+- display: Remove VFW
+  action: /restmachine/cloudbroker/cloudspace/destroyVFW
+  input:
+  - reason
+  data:
+   async: True
+   cloudspaceId: ${domain}
+
+- display: Delete Portforwarding
+  action: /restmachine/cloudbroker/cloudspace/deletePortForward
+  hide: true
+  reload: false
+  data:
+   cloudspaceId: ${domain}
+
+}}
+
+{{movevfw: cloudspaceId:${domain}}}
+{{createportforwarding: cloudspaceId:${domain}}}
+
+h3. Details
+|*Management IP*|${host}|
+|*Public IPs*|${pubips}|
+|*FW Node*|[${nodename}|/grid/grid node?id=${nid}&gid=${gid}]|
+|*Status*| ${"RUNNING" if running else "HALTED"} |
+|*CloudSpace ID*|[${domain}|cloud space?id=${domain}]|
+
+h3. Port Fowardings
+
+{{action id:'createportforwarding' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Port Forward'}}
+||Public IP||Public Port||VM IP||VM Port||Protocol||Delete||
+{% for rule in tcpForwardRules -%}
+|${rule.fromAddr}|${rule.fromPort}|${rule.toAddr}|${rule.toPort}|${rule.protocol.upper()}|{{action: id:'action-DeletePortforwarding' deleterow:true class:'glyphicon glyphicon-remove' data-publicIp:'${rule.fromAddr}' data-publicPort:'${rule.fromPort}' data-proto:'${rule.protocol}'}}|
+{% else -%}
+| | | | | | |
+{% endfor %}
+{% elif cloudspaceId %}
+Private network has not been deploy yet for Cloud Space [${cloudspaceName}|/cbgrid/cloud space?id=${cloudspaceId}]
+{% else %}
+No Private Network provided
+{% endif %}

@@ -1,0 +1,10 @@
+@usedefaults
+
+h3. Stacks
+
+{{actions: gridbinding:'table_cloudbroker_stack ids'
+- display: Enable Stacks
+  action: /restmachine/cloudbroker/computenode/enableStacks
+  reload: false
+ }}
+{{stacks gid:$$gid}}

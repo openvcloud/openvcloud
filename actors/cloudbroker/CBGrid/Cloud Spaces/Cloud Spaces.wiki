@@ -1,0 +1,14 @@
+@usedefault
+
+h2. Cloud Spaces
+
+{{actions: gridbinding:'table_cloudbroker_cloudspace cloudspaceIds'
+- display: Delete Cloud Spaces
+  action: /restmachine/cloudbroker/cloudspace/destroyCloudSpaces
+  reload: false
+  input:
+  - reason
+ }}
+
+
+{{cbspaces}}

@@ -1,0 +1,29 @@
+<html>
+<head></head>
+<body>
+    Dear {{ username }},<br>
+    <br>
+    {% if resourcetype == 'machine' %}
+    You are invited to access the machine <a href="{{ portalurl }}/g8vdc/#/edit/{{ resourceid }}">{{ resourcename }}</a> on the <a href="{{ portalurl }}/g8vdc">OpenvCloud</a> service with the access permissions: {{ accessrole }}.
+    {% elif resourcetype == 'cloudspace' %}
+    You are invited to access the cloudspace <a href="{{ portalurl }}/g8vdc/#/list?cloudspaceId={{ resourceid }}">{{ resourcename }}</a> on the <a href="{{ portalurl }}/g8vdc">OpenvCloud</a> service with the access permissions: {{ accessrole }}.
+    {% else %}
+    You are invited to access the {{ resourcetype }} {{ resourcename }} on the <a href="{{ portalurl }}/g8vdc">OpenvCloud</a> service with the access permissions: {{ accessrole }}.
+    {% endif %}
+    <br>
+    {% if not activated %}
+        <br>
+        Please note that your account has been deactivated and you will need to contact the OpenvCloud <a href="mailto:support@greenitglobe.com">support team</a> first to activate it again.
+        <br>
+    {% endif %}
+    <br>
+    In case you experience any issue while using the OpenvCloud service, please contact us at <a href="mailto:support@greenitglobe.com">support@greenitglobe.com</a>
+    <br>
+    <br>
+    <div>
+        Best Regards,<br>
+        <br>
+        Your OpenvCloud Team<br>
+    </div>
+</body>
+</html>

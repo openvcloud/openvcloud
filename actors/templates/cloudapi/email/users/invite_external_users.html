@@ -1,0 +1,30 @@
+<html>
+<head></head>
+<body>
+    Dear,<br>
+    <br>
+    {% if resourcetype == 'machine' %}
+    You are invited to access the machine <a href="{{ portalurl }}wiki_gcb/MachineDeck#/edit/{{ resourceid }}">{{ resourcename }}</a> on the <a href="{{ portalurl }}/wiki_gcb">OpenvCloud</a> service with the access permissions: {{ accessrole }}.
+    {% elif resourcetype == 'cloudspace' %}
+    You are invited to access the cloudspace <a href="{{ portalurl }}/wiki_gcb/MachineDeck#/list?cloudspaceId={{ resourceid }}">{{ resourcename }}</a> on the <a href="{{ portalurl }}/wiki_gcb">OpenvCloud</a> service with the access permissions: {{ accessrole }}.
+    {% else %}
+    You are invited to access the {{ resourcetype }} {{ resourcename }} on the <a href="{{ portalurl }}/wiki_gcb">OpenvCloud</a> service with the access permissions: {{ accessrole }}.
+    {% endif %}
+    <br>
+    <br>
+    You need to register for a user account using the following link: <a href="{{ portalurl }}/wiki_gcb/RegisterUser?token={{ invitationtoken }}&email={{emailaddress }}">{{ portalurl }}/wiki_gcb/RegisterUser?token={{ invitationtoken }}</a> first.
+    <br>
+    If you are unable to follow the link, copy and paste it in your favorite browser.
+    <br>
+    <br>
+    <br>
+    In case you experience any issue while registering or using the OpenvCloud service, please contact us at <a href="mailto:support@greenitglobe.com">support@greenitglobe.com</a>
+    <br>
+    <br>
+    <div>
+        Best Regards,<br>
+        <br>
+        Your OpenvCloud Team<br>
+    </div>
+</body>
+</html>

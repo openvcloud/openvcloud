@@ -1,0 +1,1 @@
+{{ resourcetype }} {{ resourcename }} has been shared with you

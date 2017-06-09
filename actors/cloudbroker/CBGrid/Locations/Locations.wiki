@@ -1,0 +1,25 @@
+
+{{actions
+- display: Add Location
+  action: /restmachine/cloudbroker/grid/add
+  refresh: false
+  hide: true
+  showresponse: true
+  input:
+    - name: name
+      label: Location Name
+      type: text
+    - name: gid
+      label: Grid ID
+      type: number
+    - name: apiUrl
+      label: API URL
+      type: text
+    - name: locationcode
+      label: Location Code (typicly used in dns names)
+      type: text
+}}
+h3. Locations
+
+{{action: id:'action-AddLocation' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Location'}}
+{{locations}}

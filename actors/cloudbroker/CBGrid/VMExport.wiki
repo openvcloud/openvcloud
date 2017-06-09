@@ -1,0 +1,47 @@
+@usedefault
+
+{{vmexport id:$$id}}
+
+h2. VMExport: ${id}
+
+{{actions:
+- display: Update Password
+  action: /restmachine/cloudbroker/user/updatePassword
+  data:
+   username: ${id}
+  input:
+  - password
+
+- display: Send Reset Password Link
+  action: /restmachine/cloudbroker/user/sendResetPasswordLink
+  data:
+   username: ${id}
+   email: ${emails}
+
+- display: Delete
+  action: /restmachine/cloudbroker/user/delete
+  data:
+   username: ${id}
+  input:
+  - reason
+}}
+
+h3. Details
+|*GUID*|${guid}|
+|*Name*|${name}|
+|*Bucket*|${bucket}|
+|*Status*|${status}|
+|*Size*|${size}|
+|*Original Size*|${original_size}|
+|*Timestamp*|${timestamp}|
+|*Storage Type*|${storagetype}|
+|*Type*|${type}|
+|*VMachine ID*|[${machineId}|/CBGrid/Virtual Machine?id=${machineId}]|
+|*Files*|${files}|
+|*Location*|${location}|
+
+h5. Config
+{{code:
+${config}
+}}
+

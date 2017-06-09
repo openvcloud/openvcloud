@@ -1,0 +1,32 @@
+<html>
+<head>
+
+</head>
+<body>
+    <div>
+    Dear,
+    </div>
+
+    {% if token %}
+    <p>
+        Welcome to OpenvCloud
+    </p>
+    {% endif %}
+
+    <p>
+    A new account {{ account }} has been created for you.
+    {% if token %}
+        Your username is <strong>{{ username }}</strong> to login first activate your account
+        <a href='{{ portalurl }}/g8vdc/#/Activation?token={{token}}'>here</a>
+    {% else %}
+        You can login to your new account <a href='{{ portalurl }}'>here</a>
+    {% endif %}
+    </p>
+
+    <div>
+        Best Regards,<br>
+        <br>
+        Your OpenvCloud Team<br>
+    </div>
+</body>
+</html>

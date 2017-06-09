@@ -1,0 +1,22 @@
+@usedefault
+
+{{datatables_use}}
+
+{{actions
+- display: Decommission Node
+  action: /restmachine/cloudbroker/ovsnode/decommissionNode
+  refresh: false
+  hide: true
+  showresponse: true
+}}
+
+h3. Storage Routers
+{{storagenodes}}
+
+
+||Grid ID||Name||Grid Node ID||IP Address||Decomission||
+{% for node in nodes -%}
+|${node["gid"]}|[${ node["name"] }|/grid/Grid Node?id=${node["id"]}&gid=${node["gid"]}]|${node["id"]}|${node["ips"]}|{{ action: id:'action-DecommissionNode' deleterow:true class:'glyphicon glyphicon-remove' data-nid:'${node["id"]}' }}|
+{% else %}
+| | | | | |
+{% endfor %}

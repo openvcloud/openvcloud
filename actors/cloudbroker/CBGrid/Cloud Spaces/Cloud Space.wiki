@@ -1,0 +1,246 @@
+@usedefault
+
+@@title Cloud Space: ${name}
+
+{{cbspace}}
+{{datatables_use}}
+{% if id %}
+
+
+h2. Cloud Space: ${name}
+
+{{toc: start=3}}
+
+{% if status != "DESTROYED" %}
+
+{{actions:
+
+
+- display: Edit
+  action: /restmachine/cloudbroker/cloudspace/update
+  clearform: false
+  input:
+  - name: name
+    label: Name
+    placeholder:
+    type: text
+    default: '${name}'
+
+  - name: maxMemoryCapacity
+    label: Max Memory Capacity (GB)
+    placeholder: leave empty if no limits should be set
+    type: float
+    default: '${maxMemoryCapacity}'
+
+  - name: maxVDiskCapacity
+    label: Max VDisk Capacity (GB)
+    placeholder: leave empty if no limits should be set
+    type: number
+    default: '${maxVDiskCapacity}'
+
+  - name: maxCPUCapacity
+    label: Max Number of CPU Cores
+    placeholder: leave empty if no limits should be set
+    type: number
+    default: '${maxCPUCapacity}'
+
+  - name: maxNetworkPeerTransfer
+    label: Max External Network Transfer (GB)
+    placeholder: leave empty if no limits should be set
+    type: number
+    default: '${maxNetworkPeerTransfer}'
+
+  - name: maxNumPublicIP
+    label: Max Number of Public IP Addresses
+    placeholder: leave empty if no limits should be set
+    type: number
+    default: '${maxNumPublicIP}'
+
+  - name: cloudspaceId
+    type: hidden
+    value: $$id
+
+{% if status == "VIRTUAL" %}
+- display: Deploy VFW
+  action: /restmachine/cloudbroker/cloudspace/deployVFW
+  reload: false
+  input:
+  - reason
+  data:
+   async: True
+   cloudspaceId: $$id
+
+{% endif %}
+
+- display: Delete Cloud Space
+  action: /restmachine/cloudbroker/cloudspace/destroy
+  reload: false
+  data:
+   cloudspaceId: $$id
+   accountId: ${accountId}
+  input:
+  - reason
+
+{% if status != "DISABLED" %}
+- display: Disable Cloud Space
+  action: /restmachine/cloudapi/cloudspaces/disable
+  data:
+   cloudspaceId: $$id
+  input:
+  - reason
+{% else %}
+- display: Enable Cloud Space
+  action: /restmachine/cloudapi/cloudspaces/enable
+  data:
+   cloudspaceId: $$id
+  input:
+  - reason
+{% endif %}
+
+- display: Grant User Access
+  hide: true
+  action: /restmachine/cloudbroker/cloudspace/addUser
+  data:
+   cloudspaceId: $$id
+  input:
+  - name: username
+    label: Username or email address (an invitation will be sent to unregistered emails)
+    type: text
+  - name: accesstype
+    label: ACL
+    type: dropdown
+    values:
+     - label: Admin
+       value: ARCXDU
+     - label: Write
+       value: RCX
+     - label: Read
+       value: R
+
+- display: Revoke User Access
+  action: /restmachine/cloudbroker/cloudspace/deleteUser
+  hide: true
+  data:
+   cloudspaceId: $$id
+  input:
+  - name: recursivedelete
+    type: dropdown
+    label: Do you want to recursively remove user permissions from all owned vmachines?
+    values:
+     - label: 'Yes'
+       value: true
+     - label: 'No'
+       value: false
+
+- display: Delete Portforwarding
+  action: /restmachine/cloudbroker/cloudspace/deletePortForward
+  hide: true
+  reload: false
+  data:
+   cloudspaceId: $$id
+
+#- display: Add Extra IP
+#  action: /restmachine/cloudbroker/cloudspace/addExtraIP
+#  data:
+#   cloudspaceId: $$id
+#  input:
+#  - ipaddress
+#  - reason
+
+#- display: Remove IP
+#  action: /restmachine/cloudbroker/cloudspace/removeIP
+#  data:
+#   cloudspaceId: $$id
+#  input:
+#  - ipaddress
+#  - reason
+
+}}
+
+{% endif %}
+
+{{createmachine: cloudspaceId:$$id}}
+{{importmachine: cloudspaceId:$$id}}
+{{createportforwarding: cloudspaceId:$$id}}
+
+h3. Details
+|*Cloud Space ID*|$$id|
+|*Account*|[${accountname}|account?id=${accountId}]|
+|*Network ID*|${networkId} (${'%04x' % networkId})|
+{%- if stackId %}
+|*Stack*|[${stackName}|Stack?id=${stackId}]|
+{% endif -%}
+|*End User Portal*| [View Cloud Space|/g8vdc/#/list?cloudspaceId=${id}] |
+|*Status*|${status}|
+|*Creation Time*|{{ts: ${creationTime}}}|
+|*Update Time*|{{ts: ${updateTime}}}|
+|*Location Code*|${location}|
+|*Description*|${descr}|
+|*External IP Address*|[${externalnetworkip or 'Unassigned'}|External Network?networkid=${externalnetworkId}]|
+
+h3. Cloud Resource Limits
+
+|*Memory Capacity*|${'Unlimited' if reslimits.CU_M == -1  else '%r GB'%(reslimits.CU_M)}|
+|*Virtual Disk Capacity*|${'Unlimited' if reslimits.CU_D == -1  else '%i GB'%(reslimits.CU_D)}|
+|*Number of Virtual CPU Cores*|${'Unlimited' if reslimits.CU_C == -1  else reslimits.CU_C}|
+|*External Network Transfer*|${'Unlimited' if reslimits.CU_NP == -1  else '%i GB'%(reslimits.CU_NP)}|
+|*Number of Public IP Addresses*|${'Unlimited' if reslimits.CU_I == -1  else reslimits.CU_I}|
+
+h3. Users Access
+{{action: id:'action-GrantUserAccess' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Grant User Access'}}
+||User Name||E-Mail||ACL||Status||Revoke Access||
+{% for user in users -%}
+    | {%if user.userstatus!='INVITED' %} [${user.id}|/CBGrid/user?id=${user.id}] {%else%} ${user.id} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{% if user.accessUserType == 'acc' %} User access via account [page |account?id=${accountId}] {% else %} {{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.id}' class:'glyphicon glyphicon-remove'}} {% endif %}|
+{% endfor %}
+
+h3. Port Forwards
+{% if status != "DESTROYED" %}
+{{action id:'createportforwarding' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Port Forward'}}
+{% endif %}
+||Public IP||Public Port||VM IP||VM Port||Protocol||Delete||
+{% for rule in forwardRules -%}
+|${rule.fromAddr}|${rule.fromPort}|${rule.toAddr}|${rule.toPort}|${rule.protocol.upper()}|{{action: id:'action-DeletePortforwarding' deleterow:true class:'glyphicon glyphicon-remove' data-publicIp:'${rule.fromAddr}' data-publicPort:'${rule.fromPort}' data-proto:'${rule.protocol}'}}|
+{% else -%}
+| | | | | | |
+{% endfor %}
+
+
+h3. Virtual Machines
+
+{% if status != "DESTROYED" %}
+{{action id:'createmachine' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Virtual Machine'}}
+{{action id:'importmachine' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Import Virtual Machine'}}
+
+{{actions: gridbinding:'table_cloudbroker_vmachine machineIds'
+- display: Start Machines
+  action: /restmachine/cloudbroker/machine/startMachines
+  reload: false
+  input:
+  - reason
+
+- display: Stop Machines
+  action: /restmachine/cloudbroker/machine/stopMachines
+  reload: false
+  input:
+  - reason
+
+- display: Reboot Machines
+  action: /restmachine/cloudbroker/machine/rebootMachines
+  reload: false
+  input:
+  - reason
+
+- display: Destroy Machines
+  action: /restmachine/cloudbroker/machine/destroyMachines
+  reload: false
+  input:
+  - reason
+ }}
+{% endif %}
+{{vmachines cloudspaceid:$$id}}
+
+h3. Audits
+{{grid.audits cloudspaceId:$$id}}
+{% else %}
+No Cloud Space found.
+{% endif %}

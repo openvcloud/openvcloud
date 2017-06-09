@@ -1,0 +1,15 @@
+@usedefault
+
+h2. Users
+{{action id:'createuser' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add User'}}
+
+{{actions: gridbinding:'table_system_user userIds'
+- display: Delete Users
+  action: /restmachine/cloudbroker/user/deleteUsers
+  reload: false
+  input:
+  - reason
+ }}
+
+{{createuser}}
+{{users: userdetails:/CBgrid/user?id}}

@@ -1,0 +1,5 @@
+@usedefaults
+
+h3. Virtual Machines
+
+{{vmachines: stackid:$$stackid cloudspaceid:$$cloudspaceid}}
