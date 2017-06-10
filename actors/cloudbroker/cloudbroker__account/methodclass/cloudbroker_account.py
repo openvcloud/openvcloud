@@ -1,10 +1,10 @@
 from js9 import j
 import time
-from JumpScale.portal.portal.auth import auth
+from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib.baseactor import BaseActor, wrap_remote
-from JumpScale.portal.portal.async import async
-from JumpScale.portal.portal import Validators
+from cloudbroker.actorlib.baseactor import BaseActor
+from JumpScale9Portal.portal.async import async
+from JumpScale9Portal.portal import Validators
 
 
 def _send_signup_mail(hrd, **kwargs):
@@ -25,20 +25,19 @@ class cloudbroker_account(BaseActor):
 
     def __init__(self):
         super(cloudbroker_account, self).__init__()
-        self.syscl = j.clients.osis.getNamespace('system')
+        self.syscl = j.portal.tools.models.system
 
     def _checkAccount(self, accountId):
-        account = self.models.account.search({'id': accountId, 'status': {'$ne': 'DESTROYED'}})[1:]
-        if not account:
+        accounts = self.models.Account.objects(id=accountId, status__ne='DESTROYED')
+        if not accounts:
             raise exceptions.NotFound('Account name not found')
-        if len(account) > 1:
+        if len(accounts) > 1:
             raise exceptions.BadRequest('Found multiple accounts for the account ID "%s"' % accountId)
 
-        return account[0]
+        return accounts[0]
 
     @auth(['level1', 'level2', 'level3'])
     @async('Disabling Account', 'Finished disabling account', 'Failed to disable account')
-    @wrap_remote
     def disable(self, accountId, reason, **kwargs):
         """
         Disable an account
@@ -61,7 +60,6 @@ class cloudbroker_account(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    @wrap_remote
     def create(self, name, username, emailaddress, maxMemoryCapacity=-1,
                maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, sendAccessEmails=True, **kwargs):
 
@@ -69,17 +67,18 @@ class cloudbroker_account(BaseActor):
             sendAccessEmails = True
         elif sendAccessEmails == 0:
             sendAccessEmails = False
-        accounts = self.models.account.search({'name': name, 'status': {'$ne': 'DESTROYED'}})[1:]
-        if accounts:
+        accounts = self.models.Account.objects(name=name, status__ne='DESTROYED').count()
+        if accounts > 0:
             raise exceptions.Conflict('Account name is already in use.')
 
         created = False
-        if j.core.portal.active.auth.userExists(username):
-            if emailaddress and not self.syscl.user.search({'id': username,
-                                                            'emails': emailaddress})[1:]:
-                raise exceptions.Conflict('The specified username and email do not match.')
+        if self.syscl.User.objects(name=username).count() > 0:
+            if emailaddress:
+                users = self.syscl.User.objects(name=username, emails=emailaddress)
+                if emailaddress and users.count() == 0:
+                    raise exceptions.Conflict('The specified username and email do not match.')
 
-            user = j.core.portal.active.auth.getUserInfo(username)
+            user = self.syscl.User.objects(name=username).first()
             emailaddress = user.emails[0] if user.emails else None
         else:
             if not emailaddress:
@@ -91,32 +90,32 @@ class cloudbroker_account(BaseActor):
             created = True
 
         now = int(time.time())
-        locationurl = self.cb.actors.cloudapi.locations.getUrl().strip('/')
-
-        account = self.models.account.new()
-        account.name = name
-        account.creationTime = now
-        account.updateTime = now
-        account.company = ''
-        account.companyurl = ''
-        account.status = 'CONFIRMED'
-        account.sendAccessEmails = sendAccessEmails
-
-        resourcelimits = {'CU_M': maxMemoryCapacity,
+        resourcelimits = {'CU_M': int(maxMemoryCapacity),
                           'CU_D': maxVDiskCapacity,
                           'CU_C': maxCPUCapacity,
                           'CU_NP': maxNetworkPeerTransfer,
                           'CU_I': maxNumPublicIP}
         self.cb.fillResourceLimits(resourcelimits)
-        account.resourceLimits = resourcelimits
 
-        ace = account.new_acl()
-        ace.userGroupId = username
-        ace.type = 'U'
-        ace.right = 'CXDRAU'
-        ace.status = 'CONFIRMED'
-        accountid = self.models.account.set(account)[0]
+        ace = self.models.ACE(
+            userGroupId=username,
+            type='U',
+            status='CONFIRMED',
+            right='CXDRAU'
+        )
 
+        account = self.models.Account(
+            name=name,
+            creationTime=now,
+            updateTime=now,
+            status='CONFIRMED',
+            resourceLimits=resourcelimits,
+            sendAccessEmails=sendAccessEmails,
+            acl=[ace]
+        )
+        account.save()
+
+        locationurl = self.cb.actors.cloudapi.locations.getUrl().strip('/')
         mail_args = {
             'account': name,
             'username': username,
@@ -139,7 +138,7 @@ class cloudbroker_account(BaseActor):
         if emailaddress:
             _send_signup_mail(hrd=self.hrd, **mail_args)
 
-        return accountid
+        return account.id
 
     @auth(['level1', 'level2', 'level3'])
     def enable(self, accountId, reason, **kwargs):
@@ -158,7 +157,6 @@ class cloudbroker_account(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    @wrap_remote
     def update(self, accountId, name, maxMemoryCapacity, maxVDiskCapacity, maxCPUCapacity,
                maxNetworkPeerTransfer, maxNumPublicIP, sendAccessEmails, **kwargs):
         """
@@ -250,7 +248,6 @@ class cloudbroker_account(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    @wrap_remote
     def addUser(self, accountId, username, accesstype, **kwargs):
         """
         Give a user access rights.
@@ -269,7 +266,6 @@ class cloudbroker_account(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    @wrap_remote
     def deleteUser(self, accountId, username, recursivedelete, **kwargs):
         """
         Delete a user from the account

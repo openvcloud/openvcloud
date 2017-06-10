@@ -1,6 +1,6 @@
 from js9 import j
-from cloudbrokerlib import authenticator
-from cloudbrokerlib.baseactor import BaseActor
+from cloudbroker.actorlib import authenticator
+from cloudbroker.actorlib.baseactor import BaseActor
 from JumpScale9Portal.portal import exceptions
 
 
@@ -9,11 +9,6 @@ class cloudapi_accounts(BaseActor):
     API Actor api for managing account
 
     """
-
-    def __init__(self):
-        super(cloudapi_accounts, self).__init__()
-        self.systemodel = j.clients.osis.getNamespace('system')
-
     @authenticator.auth(acl={'account': set('U')})
     def addUser(self, accountId, userId, accesstype, **kwargs):
         """
@@ -228,7 +223,7 @@ class cloudapi_accounts(BaseActor):
             sendAccessEmails = True
         elif sendAccessEmails == 0:
             sendAccessEmails = False
-            
+
         accountobj = self.models.account.get(accountId)
 
         if name:

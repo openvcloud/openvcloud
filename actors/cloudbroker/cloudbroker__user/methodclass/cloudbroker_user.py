@@ -1,8 +1,7 @@
 from js9 import j
-from JumpScale.portal.portal.auth import auth
-from cloudbrokerlib.baseactor import BaseActor, wrap_remote
+from JumpScale9Portal.portal.auth import auth
+from cloudbroker.actorlib.baseactor import BaseActor
 from JumpScale9Portal.portal import exceptions
-from JumpScale.baselib.http_client.HttpClient import HTTPError
 import hashlib
 import time
 
@@ -11,10 +10,6 @@ class cloudbroker_user(BaseActor):
     """
     Operator actions for interventions specific to a user
     """
-    def __init__(self):
-        super(cloudbroker_user, self).__init__()
-        self.syscl = j.clients.osis.getNamespace('system')
-
     def generateAuthorizationKey(self, username, **kwargs):
         """
         Generates a valid authorizationkey in the context of a specific user.
@@ -47,7 +42,6 @@ class cloudbroker_user(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    @wrap_remote
     def sendResetPasswordLink(self, username, **kwargs):
         user = self.cb.checkUser(username)
         if not user:
@@ -99,14 +93,8 @@ class cloudbroker_user(BaseActor):
                 accountobj.acl = filter(lambda a: a.userGroupId != username, accountobj.acl)
                 self.models.account.set(accountobj)
             else:
-                try:
-                    j.apps.cloudbroker.account.deleteUser(accountId=account['id'], username=username,
-                                                                  recursivedelete=True)
-                except HTTPError as ex:
-                    if ex.status_code == 400 and ex.msg.count('is the last admin on the account'):
-                        raise exceptions.BadRequest(ex.msg)
-                    else:
-                        raise
+                j.apps.cloudbroker.account.deleteUser(accountId=account['id'], username=username,
+                                                      recursivedelete=True)
 
         # Delete user from cloudspaces
         cloudspaceswiththisuser = self.models.cloudspace.search(query)[1:]

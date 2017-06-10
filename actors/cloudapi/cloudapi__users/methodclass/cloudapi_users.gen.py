@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_users(j.code.classGetBase()):
+class cloudapi_users(j.tools.code.classGetBase()):
     """
     User management
     """

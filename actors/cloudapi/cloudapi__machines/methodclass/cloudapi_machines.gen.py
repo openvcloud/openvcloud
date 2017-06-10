@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_machines(j.code.classGetBase()):
+class cloudapi_machines(j.tools.code.classGetBase()):
     """
     API Actor api, this actor is the final api a enduser uses to manage his resources
     """

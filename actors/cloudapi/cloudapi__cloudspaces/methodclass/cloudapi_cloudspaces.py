@@ -1,7 +1,7 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib import authenticator, network
-from cloudbrokerlib.baseactor import BaseActor
+from cloudbroker.actorlib import authenticator, network
+from cloudbroker.actorlib.baseactor import BaseActor
 import netaddr
 import uuid
 import time
@@ -24,9 +24,6 @@ class cloudapi_cloudspaces(BaseActor):
         super(cloudapi_cloudspaces, self).__init__()
         self.netmgr = self.cb.netmgr
         self.network = network.Network(self.models)
-        self._minimum_days_of_credit_required = float(
-            self.hrd.get("instance.openvcloud.cloudbroker.creditcheck.daysofcreditrequired"))
-        self.systemodel = j.clients.osis.getNamespace('system')
 
     @authenticator.auth(acl={'cloudspace': set('U')})
     def addUser(self, cloudspaceId, userId, accesstype, **kwargs):

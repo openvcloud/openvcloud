@@ -1,7 +1,7 @@
 from js9 import j
-from JumpScale.portal.portal import exceptions
-from cloudbrokerlib import authenticator
-from cloudbrokerlib.baseactor import BaseActor
+from JumpScale9Portal.portal import exceptions
+from cloudbroker.actorlib import authenticator
+from cloudbroker.actorlib.baseactor import BaseActor
 import netaddr
 
 

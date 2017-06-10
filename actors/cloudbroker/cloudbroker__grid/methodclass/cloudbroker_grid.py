@@ -1,13 +1,9 @@
 from js9 import j
-from JumpScale.portal.portal.auth import auth
+from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal import exceptions
 
 
 class cloudbroker_grid(object):
-    def __init__(self):
-        self.models = j.clients.osis.getNamespace('cloudbroker')
-        self.acl = j.clients.agentcontroller.get()
-
     @auth(['level1', 'level2', 'level3'])
     def purgeLogs(self, gid, age='-3d', **kwargs):
         return self.acl.executeJumpscript('cloudscalers', 'logs_purge', args={'age': age}, gid=gid, role='master', wait=False)['result']

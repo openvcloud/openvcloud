@@ -1,6 +1,6 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib import enums, network
+from cloudbroker.actorlib import enums, network
 from .gridmanager.client import getGridClient
 from .netmgr import NetManager
 import netaddr
@@ -11,7 +11,7 @@ import string
 import re
 import json
 
-models = j.clients.osis.getNamespace('cloudbroker')
+models = j.portal.tools.models.cloudbroker
 
 
 def removeConfusingChars(input):
@@ -23,7 +23,7 @@ class CloudBroker(object):
 
     def __init__(self):
         self._actors = None
-        self.syscl = j.clients.osis.getNamespace('system')
+        self.syscl = j.portal.tools.models.system
         self.cbcl = models
         self.machine = Machine(self)
         self.cloudspace = CloudSpace(self)
@@ -31,22 +31,7 @@ class CloudBroker(object):
 
     @property
     def actors(self):
-        ctx = j.core.portal.active.requestContext
-        hrd = j.application.getAppInstanceHRD(name="portal_client", instance='cloudbroker')
-        addr = hrd.get('instance.param.addr')
-        port = hrd.getInt('instance.param.port')
-        secret = hrd.getStr('instance.param.secret')
-        cl = j.clients.portal.get2(ip=addr, port=port, secret=secret)
-        oldauth = ctx.env.get('HTTP_AUTHORIZATION', None)
-        if oldauth is not None:
-            cl._session.headers.update({'Authorization': oldauth})
-        elif ctx.env.get('HTTP_COOKIE', None):
-            cookie = ctx.env.get('HTTP_COOKIE', None)
-            cl._session.headers.update({'Cookie': cookie})
-        elif 'authkey' in ctx.params:
-            secret = ctx.params['authkey']
-            cl._session.headers.update({'Authorization': 'authkey {}'.format(secret)})
-        return cl
+        return j.apps
 
     def markProvider(self, stackId, eco):
         stack = models.stack.get(stackId)
@@ -300,7 +285,7 @@ class Machine(object):
 
     def __init__(self, cb):
         self.cb = cb
-        self.rcl = j.clients.redis.getByInstance('system')
+        self.rcl = j.core.db
 
     def cleanup(self, machine):
         # this method might be called by muiltiple layers so we dont care of delete fails

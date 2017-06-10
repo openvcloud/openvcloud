@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_grid(j.code.classGetBase()):
+class cloudbroker_grid(j.tools.code.classGetBase()):
     """
     Operator actions for handling interventions on a a grid
     """

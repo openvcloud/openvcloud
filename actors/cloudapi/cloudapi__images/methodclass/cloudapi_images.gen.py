@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_images(j.code.classGetBase()):
+class cloudapi_images(j.tools.code.classGetBase()):
     """
     Lists all the images. A image is a template which can be used to deploy machines.
     """

@@ -38,36 +38,22 @@ def generateUsersList(sclient, objdict, accessUserType, users):
 
 
 def main(j, args, params, tags, tasklet):
-
+    models = j.portal.tools.models.cloudbroker
     params.result = (args.doc, args.doc)
     id = args.requestContext.params.get('id')
-    try:
-        id = int(id)
-    except:
-        pass
-    if not isinstance(id, int):
+    if not id:
         args.doc.applyTemplate({})
         return params
 
-    cbclient = j.clients.osis.getNamespace('cloudbroker')
-    sclient = j.clients.osis.getNamespace('system')
-
-    if not cbclient.cloudspace.exists(id):
+    if not models.Cloudspace.exists(id):
         args.doc.applyTemplate({'id': None}, False)
         return params
 
-    cloudspaceobj = cbclient.cloudspace.get(id)
-
-    cloudspacedict = cloudspaceobj.dump()
-
-    accountid = cloudspacedict['accountId']
-    account = cbclient.account.get(accountid).dump() if cbclient.account.exists(accountid) else {'name': 'N/A'}
-    cloudspacedict['accountname'] = account['name']
+    cloudspaceobj = models.Cloudspace.get(id)
 
     # Resource limits
 
     j.apps.cloudbroker.account.cb.fillResourceLimits(cloudspaceobj.resourceLimits)
-    cloudspacedict['reslimits'] = cloudspaceobj.resourceLimits
 
     users = list()
     users = generateUsersList(sclient, account, 'acc', users)

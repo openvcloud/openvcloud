@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_cloudspaces(j.code.classGetBase()):
+class cloudapi_cloudspaces(j.tools.code.classGetBase()):
     """
     API Actor api for managing cloudspaces, this actor is the final api a enduser uses to manage cloudspaces
     """
@@ -34,7 +34,7 @@ class cloudapi_cloudspaces(j.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method addUser")
 
-    def create(self, accountId, location, name, access, externalnetworkId, allowedVMSizes, maxMemoryCapacity=-1.0, maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
+    def create(self, accountId, location, name, access, externalnetworkId, allowedVMSizes, maxMemoryCapacity='-1', maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
         """
         Create an extra cloudspace
         Setting a cloud unit maximum to -1 or empty will not put any restrictions on the resource
@@ -42,7 +42,7 @@ class cloudapi_cloudspaces(j.code.classGetBase()):
         param:location location code for the cloudspace
         param:name name of space to create
         param:access username of a user which has full access to this space
-        param:maxMemoryCapacity max size of memory in GB default=-1.0
+        param:maxMemoryCapacity max size of memory in GB default=-1
         param:maxVDiskCapacity max size of aggregated vdisks in GB default=-1
         param:maxCPUCapacity max number of cpu cores default=-1
         param:maxNetworkPeerTransfer max sent/received network transfer peering default=-1

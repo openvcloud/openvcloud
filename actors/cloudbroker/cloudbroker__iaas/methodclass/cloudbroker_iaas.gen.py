@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_iaas(j.code.classGetBase()):
+class cloudbroker_iaas(j.tools.code.classGetBase()):
     """
     iaas manager
     """

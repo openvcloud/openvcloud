@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_computenode(j.code.classGetBase()):
+class cloudbroker_computenode(j.tools.code.classGetBase()):
     """
     Operator actions for handling interventsions on a computenode
     """

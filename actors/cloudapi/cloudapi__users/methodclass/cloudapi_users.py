@@ -1,8 +1,10 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-import JumpScale.baselib.mailclient
-from cloudbrokerlib.baseactor import BaseActor
-import re, string, random, time
+from cloudbroker.actorlib.baseactor import BaseActor
+import re
+import string
+import random
+import time
 import json
 
 
@@ -14,10 +16,6 @@ class cloudapi_users(BaseActor):
     User management
 
     """
-    def __init__(self):
-        super(cloudapi_users, self).__init__()
-        self.systemodel = j.clients.osis.getNamespace('system')
-
     def authenticate(self, username, password, **kwargs):
         """
         The function evaluates the provided username and password and returns a session key.

@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_qos(j.code.classGetBase()):
+class cloudbroker_qos(j.tools.code.classGetBase()):
     """
     Provide Quality of service feature for network disk and cpu
     """

@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_account(j.code.classGetBase()):
+class cloudbroker_account(j.tools.code.classGetBase()):
     """
     Operator actions for interventions on accounts
     """
@@ -23,14 +23,14 @@ class cloudbroker_account(j.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method addUser")
 
-    def create(self, name, username, emailaddress, maxMemoryCapacity=-1.0, maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, sendAccessEmails=True, **kwargs):
+    def create(self, name, username, emailaddress, maxMemoryCapacity='-1', maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, sendAccessEmails=True, **kwargs):
         """
         Create Account.
         Setting a cloud unit maximum to -1 or empty will not put any restrictions on the resource
         param:name Display name
         param:username name of the account
         param:emailaddress email
-        param:maxMemoryCapacity max size of memory in GB default=-1.0
+        param:maxMemoryCapacity max size of memory in GB default=-1
         param:maxVDiskCapacity max size of aggregated vdisks in GB default=-1
         param:maxCPUCapacity max number of cpu cores default=-1
         param:maxNetworkPeerTransfer max sent/received network transfer peering default=-1

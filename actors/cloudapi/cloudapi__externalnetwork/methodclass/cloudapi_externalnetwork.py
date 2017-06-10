@@ -1,5 +1,5 @@
 from js9 import j
-from cloudbrokerlib.baseactor import BaseActor
+from cloudbroker.actorlib.baseactor import BaseActor
 
 
 class cloudapi_externalnetwork(BaseActor):

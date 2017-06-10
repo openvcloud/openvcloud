@@ -1,16 +1,9 @@
-from js9 import j
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib.baseactor import BaseActor
+from cloudbroker.actorlib.baseactor import BaseActor
 import itertools
 
 
 class cloudbroker_qos(BaseActor):
-    def __init__(self):
-        super(cloudbroker_qos, self).__init__()
-        self.acl = j.clients.agentcontroller.get()
-        self.ccl = j.clients.osis.getNamespace('cloudbroker')
-        self.vcl = j.clients.osis.getNamespace('vfw')
-
     def limitCPU(self, machineId, **kwargs):
         """
         Limit CPU quota

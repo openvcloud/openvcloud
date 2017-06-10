@@ -1,8 +1,7 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib import authenticator, enums, network
-from cloudbrokerlib.baseactor import BaseActor
-from CloudscalerLibcloud.utils import ovf
+from cloudbroker.actorlib import authenticator, enums, network
+from cloudbroker.actorlib.baseactor import BaseActor
 import time
 import itertools
 import re
@@ -38,10 +37,7 @@ class cloudapi_machines(BaseActor):
 
     def __init__(self):
         super(cloudapi_machines, self).__init__()
-        self.osisclient = j.core.portal.active.osis
-        self.osis_logs = j.clients.osis.getCategory(self.osisclient, "system", "log")
         self.network = network.Network(self.models)
-        self.systemodel = j.clients.osis.getNamespace('system')
         self.netmgr = self.cb.netmgr
 
     def _updatestatus(self, machineId, actiontype, newstatus):

@@ -1,7 +1,7 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-from JumpScale.portal.portal.auth import auth
-from cloudbrokerlib.baseactor import BaseActor
+from JumpScale9Portal.portal.auth import auth
+from cloudbroker.actorlib.baseactor import BaseActor
 
 
 class cloudbroker_image(BaseActor):

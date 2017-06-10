@@ -1,28 +1,20 @@
 
 def main(j, args, params, tags, tasklet):
-
+    models = j.portal.tools.models.cloudbroker
     page = args.page
     modifier = j.portal.tools.html.htmlfactory.getPageModifierGridDataTables(page)
-    ccl = j.clients.osis.getNamespace('cloudbroker')
 
     stackid = args.getTag('stackid')
     filters = dict()
     if stackid:
-        stackid = int(stackid)
-        stack = ccl.stack.get(stackid)
-        images = ccl.image.search({'id': {'$in': stack.images}})[1:]
-        imageids = [image['referenceId'] for image in images]
-        filters['id'] = {'$in': imageids}
-
-    locations = ccl.location.search({'$query': {}, '$fields': ['gid', 'name']})[1:]
-    locationmap = {loc['gid']: loc['name'] for loc in locations}
+        stack = models.Stack.get(stackid)
+        filters['id'] = {'$in': stack.images}
 
     def getLocation(field, row):
         gid = field[row]
         if not gid:
             return ''
-        name = locationmap[gid]
-        return "[{name} ({gid})|/cbgrid/grid?gid={gid}]".format(gid=gid, name=name)
+        return "[{name} ({gid})|/cbgrid/location?id={id}]".format(id=row.location.id, name=row.location.name)
 
     fields = [
         {'name': 'Name',

@@ -14,19 +14,9 @@ def main(j, args, params, tags, tasklet):
 
     fields = [
         {
-            'name': 'ID',
-            'value': '[%(id)s|/CBGrid/account?id=%(id)s]',
-            'id': 'id'
-        },
-        {
             'name': 'Name',
-            'value': 'name',
+            'value': '[%(name)s|/CBGrid/account?id=%(id)s]',
             'id': 'name'
-        },
-        {
-            'name': 'Status',
-            'value': 'status',
-            'id': 'status'
         },
         {
             'name': 'Access Controler List',

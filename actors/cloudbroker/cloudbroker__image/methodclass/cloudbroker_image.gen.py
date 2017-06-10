@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_image(j.code.classGetBase()):
+class cloudbroker_image(j.tools.code.classGetBase()):
     """
     image manager
     """
@@ -12,6 +12,21 @@ class cloudbroker_image(j.code.classGetBase()):
         self.appname="cloudbroker"
         #cloudbroker_image_osis.__init__(self)
 
+
+    def create(self, name, gid, description, size, accountId, type, referenceId, **kwargs):
+        """
+        create image
+        param:name name of the image
+        param:gid location of the image.
+        param:description extra description of the image
+        param:size minimal disk size in Gigabyte
+        param:accountId id of account to which this image belongs
+        param:type type of image
+        param:referenceId Path of image on storage server
+        result int
+        """
+        #put your code here to implement this method
+        raise NotImplementedError ("not implemented method create")
 
     def delete(self, imageId, **kwargs):
         """

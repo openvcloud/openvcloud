@@ -18,26 +18,33 @@ def main(j, args, params, tags, tasklet):
             return '[%(externalnetworkip)s|/CBGrid/External Network?networkid=%(externalnetworkId)s]' % row
         else:
             return ''
+
+    def makeAccountLink(row, field):
+        return '[%(name)s|/CBGrid/account?id=%(id)s]' % row.account
+
+    def makeLocationLink(row, field):
+        return '[%(name)s|/CBGrid/location?id=%(id)s]' % row.location
+
     fields = [
         {
-            'name': 'ID',
-            'value': '[%(id)s|/CBGrid/Cloud Space?id=%(id)s]',
-            'id': 'id'
-        }, {
             'name': 'Name',
-            'value': 'name',
+            'value': '[%(name)s|/CBGrid/Cloud Space?id=%(id)s]',
             'id': 'name'
         }, {
-            'name': 'Account ID',
-            'value': '[%(accountId)s|/CBGrid/account?id=%(accountId)s]',
-            'id': 'accountId'
+            'name': 'Account',
+            'value': makeAccountLink,
+            'filterable': False,
+            'sortable': False,
+            'id': 'account'
         }, {
             'name': 'Network ID',
             'value': makeNetworkLink,
             'id': 'networkId'
         }, {
-            'name': 'Location Code',
-            'value': 'location',
+            'name': 'Location',
+            'value': makeLocationLink,
+            'filterable': False,
+            'sortable': False,
             'id': 'location'
         }, {
             'name': 'Status',

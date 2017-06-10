@@ -1,5 +1,6 @@
 from mongoengine import fields
 from mongoengine import EmbeddedDocument
+from js9 import j
 from JumpScale9Portal.data.models.Models import Base, Errorcondition
 
 DB = 'openvcloud'
@@ -12,21 +13,23 @@ class ModelBase(Base):
 
 
 class ACE(EmbeddedDocument):
-    userGroupID = fields.StringField(required=True)
+    userGroupId = fields.StringField(required=True)
     type = fields.StringField(choices=['U', 'G'])
     right = fields.StringField()
+    status = fields.StringField()
 
 
 class Account(ModelBase):
     name = fields.StringField(required=True)
-    acl = fields.ListField(ACE)
+    acl = fields.EmbeddedDocumentListField(ACE)
     status = fields.StringField(choices=['CONFIRMED', 'UNCONFIRMED', 'DISABLED'])
-    updatetime = fields.IntField()
+    updateTime = fields.IntField()
     resourceLimits = fields.DictField()
     sendAccessEmails = fields.BooleanField(default=True)
+    creationTime = fields.IntField(default=j.data.time.getTimeEpoch)
 
 
-class VMAccount(ModelBase):
+class VMAccount(EmbeddedDocument):
     login = fields.StringField()
     password = fields.StringField()
 
@@ -39,7 +42,7 @@ class Image(ModelBase):
     referenceId = fields.StringField()
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'CREATING', 'DELETING'])
     account = fields.ReferenceField(Account)
-    acl = fields.ListField(ACE)
+    acl = fields.EmbeddedDocumentListField(ACE)
     username = fields.StringField()
     password = fields.StringField()
 
@@ -48,14 +51,14 @@ class Stack(ModelBase):
     name = fields.StringField(required=True)
     description = fields.StringField()
     type = fields.StringField()
-    images = fields.ListField(Image)
+    images = fields.ListField(fields.ReferenceField(Image))
     referenceId = fields.StringField()
     error = fields.IntField()
     eco = fields.ReferenceField(Errorcondition)
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'ERROR', 'MAINTENANCE'])
 
 
-class Snapshot(ModelBase):
+class Snapshot(EmbeddedDocument):
     label = fields.StringField(required=True)
     timestamp = fields.IntField()
 
@@ -104,14 +107,14 @@ class NetworkIds(ModelBase):
 class Cloudspace(ModelBase):
     name = fields.StringField(required=True)
     description = fields.StringField()
-    acl = fields.ListField(ACE)
+    acl = fields.EmbeddedDocumentListField(ACE)
     account = fields.ReferenceField(Account)
     resourceLimits = fields.DictField()
     networkId = fields.IntField()
     networkcidr = fields.StringField()
     externalnetworkip = fields.StringField()
     externalnetwork = fields.ReferenceField(ExternalNetwork)
-    forwardRules = fields.ListField(ForwardRule)
+    forwardRules = fields.EmbeddedDocumentListField(ForwardRule)
     allowedVMSizes = fields.ListField(fields.IntField)
     status = fields.StringField(choices=['VIRTUAL', 'DEPLOYED', 'DESTROYED'])
     location = fields.ReferenceField(Location)
@@ -137,10 +140,10 @@ class Disk(ModelBase):
     referenceId = fields.StringField()
     iops = fields.IntField()
     account = fields.ReferenceField(Account)
-    acl = fields.ListField(ACE)
+    acl = fields.EmbeddedDocumentListField(ACE)
     role = fields.StringField(choices=['BOOT', 'DB', 'CACHE'])
     diskPath = fields.StringField()
-    snapshots = fields.ListField(Snapshot)
+    snapshots = fields.EmbeddedDocumentListField(Snapshot)
 
 
 class VMachine(ModelBase):
@@ -149,14 +152,14 @@ class VMachine(ModelBase):
     size = fields.ReferenceField(Size)
     image = fields.ReferenceField(Image)
     disks = fields.ListField(fields.ReferenceField(Disk))
-    nics = fields.ListField(Nic)
+    nics = fields.EmbeddedDocumentListField(Nic)
     referenceId = fields.StringField()
-    accounts = fields.ListField(VMAccount)
+    accounts = fields.EmbeddedDocumentListField(VMAccount)
     status = fields.StringField(choices=['HALTED', 'INIT', 'RUNNING', 'PAUSED', 'DESTROYED'])
     hostName = fields.StringField()
     cpus = fields.IntField()
     stack = fields.ReferenceField(Stack)
-    acl = fields.ListField(ACE)
+    acl = fields.EmbeddedDocumentListField(ACE)
     cloudspace = fields.ReferenceField(Cloudspace)
     updateTime = fields.IntField()
     deletionTime = fields.IntField()

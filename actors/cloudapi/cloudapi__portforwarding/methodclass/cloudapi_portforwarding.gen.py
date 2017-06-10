@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_portforwarding(j.code.classGetBase()):
+class cloudapi_portforwarding(j.tools.code.classGetBase()):
     """
     Portforwarding api
     uses actor /opt/code/jumpscale/unstable__jumpscale_grid/apps/vfw/actor/jumpscale__netmgr/

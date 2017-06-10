@@ -1,6 +1,6 @@
-from cloudbrokerlib import authenticator
+from cloudbroker.actorlib import authenticator
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib.baseactor import BaseActor
+from cloudbroker.actorlib.baseactor import BaseActor
 
 
 class cloudapi_images(BaseActor):

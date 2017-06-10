@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_sizes(j.code.classGetBase()):
+class cloudapi_sizes(j.tools.code.classGetBase()):
     """
     Lists all the configured flavors available.
     A flavor is a combination of amount of compute capacity(CU) and disk capacity(GB).

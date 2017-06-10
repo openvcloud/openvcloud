@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_user(j.code.classGetBase()):
+class cloudbroker_user(j.tools.code.classGetBase()):
     """
     Operator actions for interventions specific to a user
     """

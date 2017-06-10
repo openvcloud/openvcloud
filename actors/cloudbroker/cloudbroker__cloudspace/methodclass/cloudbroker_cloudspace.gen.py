@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_cloudspace(j.code.classGetBase()):
+class cloudbroker_cloudspace(j.tools.code.classGetBase()):
     """
     Operator actions to perform interventions on cloudspaces
     """
@@ -32,7 +32,7 @@ class cloudbroker_cloudspace(j.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method addUser")
 
-    def create(self, accountId, location, name, access, externalnetworkId, allowedVMSizes, maxMemoryCapacity=-1.0, maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
+    def create(self, accountId, location, name, access, externalnetworkId, allowedVMSizes, maxMemoryCapacity='-1', maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
         """
         Create a cloudspace for given account
         Setting a cloud unit maximum to -1 or empty will not put any restrictions on the resource
@@ -40,7 +40,7 @@ class cloudbroker_cloudspace(j.code.classGetBase()):
         param:location location key where the space should be created
         param:name name of space to create
         param:access username which have full access to this space
-        param:maxMemoryCapacity max size of memory in GB default=-1.0
+        param:maxMemoryCapacity max size of memory in GB default=-1
         param:maxVDiskCapacity max size of aggregated vdisks in GB default=-1
         param:maxCPUCapacity max number of cpu cores default=-1
         param:maxNetworkPeerTransfer max sent/received network transfer peering default=-1

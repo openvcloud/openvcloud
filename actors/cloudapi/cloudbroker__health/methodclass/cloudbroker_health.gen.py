@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_health(j.code.classGetBase()):
+class cloudbroker_health(j.tools.code.classGetBase()):
     """
     API Check status of grid
     """

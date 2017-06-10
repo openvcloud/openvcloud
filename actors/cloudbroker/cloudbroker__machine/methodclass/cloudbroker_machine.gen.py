@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_machine(j.code.classGetBase()):
+class cloudbroker_machine(j.tools.code.classGetBase()):
     """
     machine manager
     """

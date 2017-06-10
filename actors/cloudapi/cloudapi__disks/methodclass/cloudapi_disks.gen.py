@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_disks(j.code.classGetBase()):
+class cloudapi_disks(j.tools.code.classGetBase()):
     """
     API Actor api, this actor is the final api a enduser uses to manage his resources
     """

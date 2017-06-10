@@ -1,22 +1,16 @@
 from js9 import j
-from JumpScale.portal.portal.auth import auth
+from JumpScale9Portal.portal.auth import auth
 import functools
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib.baseactor import BaseActor, wrap_remote
+from cloudbroker.actorlib.baseactor import BaseActor
 import random
-from cloudbrokerlib.gridmanager.client import getGridClient
+from cloudbroker.actorlib.gridmanager.client import getGridClient
 
 
 class cloudbroker_computenode(BaseActor):
     """
     Operator actions for handling interventsions on a computenode
     """
-    def __init__(self):
-        super(cloudbroker_computenode, self).__init__()
-        self.scl = j.clients.osis.getNamespace('system')
-        self._vcl = j.clients.osis.getCategory(j.core.portal.active.osis, 'vfw', 'virtualfirewall')
-        self.acl = j.clients.agentcontroller.get()
-
     def _getStack(self, id, gid):
         stacks = self.models.stack.search({'id': int(id), 'gid': int(gid)})[1:]
         if not stacks:
@@ -142,7 +136,6 @@ class cloudbroker_computenode(BaseActor):
         return machines
 
     @auth(['level2', 'level3'], True)
-    @wrap_remote
     def maintenance(self, id, gid, vmaction, **kwargs):
         """
         :param id: stack Id
@@ -219,7 +212,6 @@ class cloudbroker_computenode(BaseActor):
             self.cb.netmgr.fw_move(vfw['guid'], randomnode['id'])
 
     @auth(['level2', 'level3'], True)
-    @wrap_remote
     def decommission(self, id, gid, message, **kwargs):
         stack = self._getStack(id, gid)
         stacks = self.models.stack.search({'gid': gid, 'status': 'ENABLED'})[1:]

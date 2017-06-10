@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_locations(j.code.classGetBase()):
+class cloudapi_locations(j.tools.code.classGetBase()):
     """
     API Actor api for managing locations
     """

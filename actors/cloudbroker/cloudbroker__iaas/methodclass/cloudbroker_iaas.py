@@ -1,9 +1,9 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
 import netaddr
-from JumpScale.portal.portal.auth import auth
-from cloudbrokerlib.baseactor import BaseActor
-json = j.db.serializers.ujson
+from JumpScale9Portal.portal.auth import auth
+from cloudbroker.actorlib.baseactor import BaseActor
+import json
 
 
 def checkIPS(network, ips):

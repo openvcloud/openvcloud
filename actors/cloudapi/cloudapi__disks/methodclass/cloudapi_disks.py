@@ -1,8 +1,8 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-from cloudbrokerlib import authenticator
-from cloudbrokerlib.gridmanager.client import getGridClient
-from cloudbrokerlib.baseactor import BaseActor
+from cloudbroker.actorlib import authenticator
+from cloudbroker.actorlib.gridmanager.client import getGridClient
+from cloudbroker.actorlib.baseactor import BaseActor
 
 
 class cloudapi_disks(BaseActor):
@@ -10,19 +10,6 @@ class cloudapi_disks(BaseActor):
     API Actor api, this actor is the final api a enduser uses to manage his resources
 
     """
-
-    def __init__(self):
-        super(cloudapi_disks, self).__init__()
-        self.osisclient = j.core.portal.active.osis
-        self.osis_logs = j.clients.osis.getCategory(self.osisclient, "system", "log")
-        self._minimum_days_of_credit_required = float(self.hrd.get(
-            "instance.openvcloud.cloudbroker.creditcheck.daysofcreditrequired"))
-
-    def getStorageVolume(self, disk, provider, node=None):
-        if not isinstance(disk, dict):
-            disk = disk.dump()
-        return OpenvStorageVolume(id=disk['referenceId'], name=disk['name'], size=disk['sizeMax'], driver=provider.client, extra={'node': node}, iops=disk['iops'])
-
     @authenticator.auth(acl={'account': set('C')})
     def create(self, accountId, gid, name, description, size=10, type='D', ssdSize=0, iops=2000, **kwargs):
         """

@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudapi_externalnetwork(j.code.classGetBase()):
+class cloudapi_externalnetwork(j.tools.code.classGetBase()):
     """
     List Existing extenal networks
     """
