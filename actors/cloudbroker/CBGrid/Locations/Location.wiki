@@ -8,13 +8,16 @@
 h3. Location: ${name}
 
 {{actions:
-- display: Rename Location
-  action: /restmachine/cloudbroker/grid/rename
+- display: Update Location
+  action: /restmachine/cloudbroker/location/update
   data:
-   gid: $$gid
+   locationId: ${id}
   input:
    - label: New Name
      name: name
+     type: text
+   - label: API Url
+     name: apiUrl
      type: text
 
 - display: Check VMs
@@ -39,7 +42,7 @@ h3. Location: ${name}
 - display: Sync Stacks
   action: /restmachine/cloudbroker/computenode/sync
   data:
-   gid: ${gid}
+   locationId: ${id}
 
 
 - display: Add New VM Size
@@ -85,19 +88,19 @@ h3. Location: ${name}
 
 @col 4
 h5. Active Accounts
-{{nraccountgauge id:1 gid:${gid} width:100 height:100}}
+{{nraccountgauge id:1 locationid:${id} width:100 height:100}}
 @colend
 
 
 @col 4
 h5. Free IPs
-{{nrfreeipsgauge id:5 gid:$$gid width:100 height:100}}
+{{nrfreeipsgauge id:5 locationid:${id} width:100 height:100}}
 @colend
 
 @col 4
 h5. Running Virtual Machines
 #*From Total Deployed:45*
-{{nrvmgauge: id:3 gid:$$gid width:100 height:100}}
+{{nrvmgauge: id:3 locationid:${id} width:100 height:100}}
 @colend
 @rowend
 
@@ -105,29 +108,29 @@ h5. Running Virtual Machines
 
 @col 4
 h5. Active Cloud Spaces
-{{nrcloudspacegauge id:4 gid:$$gid width:100 height:100}}
+{{nrcloudspacegauge id:4 locationid:${id} width:100 height:100}}
 @colend
 
 @col 4
 h5. Free Network IDs
-{{nrfreenwidsgauge: id:6 gid:$$gid width:100 height:100}}
+{{nrfreenwidsgauge: id:6 locationid:${id} width:100 height:100}}
 @colend
 
 @col 4
 h5. Running Windows VMs
-{{nrwinvmgauge id:2 gid:$$gid width:100 height:100}}
+{{nrwinvmgauge id:2 locationid:${id} width:100 height:100}}
 @colend
 @rowend
 
 
 h3. Stacks
-{{stacks gid:$$gid}}
+{{stacks locationid:${id}}}
 
 h3. External Networks
-{{externalnetworks gid:$$gid}}
+{{externalnetworks locationid:${id}}}
 
 h3. Virtual Machines
-{{vmachines gid:$$gid}}
+{{vmachines locationid:${id}}}
 
 {% else %}
 No Grid provided

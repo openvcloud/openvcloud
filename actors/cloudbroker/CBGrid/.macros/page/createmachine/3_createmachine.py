@@ -1,22 +1,24 @@
 from JumpScale9Portal.portal.docgenerator.popup import Popup
 
+
 def main(j, args, params, tags, tasklet):
+    models = j.portal.tools.models.cloudbroker
     params.result = page = args.page
-    cloudspaceId = int(args.getTag('cloudspaceId'))
-    scl = j.clients.osis.getNamespace('cloudbroker')
+    cloudspaceId = args.getTag('cloudspaceId')
     actors = j.apps.cloudbroker.iaas.cb.actors.cloudapi
 
-    cloudspace = scl.cloudspace.get(cloudspaceId)
-    stacks = scl.stack.search({'gid': cloudspace.gid, 'status': 'ENABLED'})[1:]
+    cloudspace = models.Cloudspace.get(cloudspaceId)
+    stacks = models.Stack.objects(location=cloudspace.location, status='ENABLED')
 
-    sizes = scl.size.search({})[1:]
-    images = actors.images.list(accountId=cloudspace.accountId, cloudspaceId=cloudspace.id)
+    sizes = list(models.Size.objects)
+    images = actors.images.list(accountId=cloudspace.account.id, cloudspaceId=cloudspace.id)
     dropsizes = list()
     dropdisksizes = list()
     dropimages = list()
     dropstacks = list()
     disksizes = set()
     dropstacks.append(('Auto', 0))
+
     def sizeSorter(size):
         return size['memory']
 
@@ -51,7 +53,3 @@ def main(j, args, params, tags, tasklet):
     popup.write_html(page)
 
     return params
-
-
-def match(j, args, params, tags, tasklet):
-    return True

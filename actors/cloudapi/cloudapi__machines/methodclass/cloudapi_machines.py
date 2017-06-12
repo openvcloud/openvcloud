@@ -372,7 +372,7 @@ class cloudapi_machines(BaseActor):
             else:
                 requests.get(callbackUrl)
         except Exception as e:
-            eco = j.errorconditionhandler.processPythonExceptionObject(e)
+            eco = j.errorhandler.processPythonExceptionObject(e)
             eco.process()
             error = True
             if not callbackUrl:
@@ -560,10 +560,10 @@ class cloudapi_machines(BaseActor):
         try:
             j.apps.cloudapi.portforwarding.deleteByVM(vmachinemodel)
         except Exception as e:
-            j.errorconditionhandler.processPythonExceptionObject(
+            j.errorhandler.processPythonExceptionObject(
                 e, message="Failed to delete portforwardings for vm with id %s" % machineId)
         except exceptions.BaseError as berror:
-            j.errorconditionhandler.processPythonExceptionObject(
+            j.errorhandler.processPythonExceptionObject(
                 berror, message="Failed to delete pf for vm with id %s can not apply config" % machineId)
         self.cb.machine.destroy(vmachinemodel)
 

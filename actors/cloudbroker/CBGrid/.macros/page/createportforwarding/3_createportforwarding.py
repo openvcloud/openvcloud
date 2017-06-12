@@ -2,10 +2,11 @@ from JumpScale9Portal.portal.docgenerator.popup import Popup
 
 
 def main(j, args, params, tags, tasklet):
+    import bson
+    models = j.portal.tools.models.cloudbroker
     params.result = page = args.page
-    cloudspaceId = int(args.getTag('cloudspaceId'))
-    ccl = j.clients.osis.getNamespace('cloudbroker')
-    vmachines = ccl.vmachine.search({'cloudspaceId': cloudspaceId, 'status': {'$nin': ['ERROR', 'DESTROYED']}})[1:]
+    cloudspaceId = args.getTag('cloudspaceId')
+    vmachines = models.VMachine.objects(cloudspace=bson.ObjectId(cloudspaceId), status__nin=['ERROR', 'DESTROYED'])
     dropvmachines = list()
 
     for vmachine in sorted(vmachines, key=lambda vm: vm['name']):

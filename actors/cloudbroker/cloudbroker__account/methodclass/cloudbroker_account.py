@@ -7,16 +7,16 @@ from JumpScale9Portal.portal.async import async
 from JumpScale9Portal.portal import Validators
 
 
-def _send_signup_mail(hrd, **kwargs):
-    notifysupport = hrd.get("instance.openvcloud.cloudbroker.notifysupport")
+def _send_signup_mail(config, **kwargs):
+    notifysupport = config.get("notifysupport")
     toaddrs = [kwargs['email']]
 
-    fromaddr = hrd.get('instance.openvcloud.supportemail')
-    if notifysupport == '1':
+    fromaddr = config.get('supportemail')
+    if notifysupport:
         toaddrs.append(fromaddr)
 
-    message = j.core.portal.active.templates.render('cbportal/email/account/created.html', **kwargs)
-    subject = j.core.portal.active.templates.render('cbportal/email/account/created.subject.txt', **kwargs)
+    message = j.portal.tools.server.active.templates.render('cloudbroker/email/account/created.html', **kwargs)
+    subject = j.portal.tools.server.active.templates.render('cloudbroker/email/account/created.subject.txt', **kwargs)
 
     j.clients.email.send(toaddrs, fromaddr, subject, message, files=None)
 
@@ -136,9 +136,9 @@ class cloudbroker_account(BaseActor):
             })
 
         if emailaddress:
-            _send_signup_mail(hrd=self.hrd, **mail_args)
+            _send_signup_mail(self.config, **mail_args)
 
-        return account.id
+        return str(account.id)
 
     @auth(['level1', 'level2', 'level3'])
     def enable(self, accountId, reason, **kwargs):

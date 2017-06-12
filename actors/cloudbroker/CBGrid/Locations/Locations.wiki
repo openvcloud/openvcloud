@@ -1,7 +1,7 @@
 
 {{actions
 - display: Add Location
-  action: /restmachine/cloudbroker/grid/add
+  action: /restmachine/cloudbroker/location/add
   refresh: false
   hide: true
   showresponse: true
@@ -9,14 +9,8 @@
     - name: name
       label: Location Name
       type: text
-    - name: gid
-      label: Grid ID
-      type: number
     - name: apiUrl
       label: API URL
-      type: text
-    - name: locationcode
-      label: Location Code (typicly used in dns names)
       type: text
 }}
 h3. Locations

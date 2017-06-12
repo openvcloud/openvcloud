@@ -21,17 +21,13 @@ class NetManager(object):
         param:cloudspace
         """
         nodeid, corexid = self.get_container(cloudspace)
-        client = getGridClient(cloudspace.gid, self.models)
+        client = getGridClient(cloudspace.location, self.models)
         name = 'vfw_{}'.format(cloudspace.id)
         data = self.get_config(cloudspace, name)
         client.rawclient.nodes.CreateGW(data, nodeid)
 
     def get_config(self, cloudspace, name):
-        externalnetwork = self.models.externalnetwork.get(cloudspace.externalnetworkId)
-        if not cloudspace.networkcidr:
-            cloudspace.networkcidr = DEFAULTCIDR
-            self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                                {'$set': {'networkcidr': cloudspace.networkcidr}})
+        externalnetwork = cloudspace.externalnetwork
 
         privatenic = {
             'type': 'vxlan',
@@ -93,37 +89,25 @@ class NetManager(object):
         return data
 
     def get_machines(self, cloudspaceId):
-        query = {
-            '$fields': ['nics.ipAddress', 'nics.macAddress',
-                        'nics.type', 'nics.networkId',
-                        'id', 'imageId',
-                        'accounts.login', 'accounts.password'],
-            '$query': {
-                'cloudspaceId': cloudspaceId,
-                'status': {'$in': ['RUNNING', 'PAUSED', 'HALTED']}
-            }
-        }
-        return self.models.vmachine.search(query, size=0)[1:]
+        return self.models.VMachine.objects(cloudspace=cloudspaceId, status__in=['RUNNING', 'PAUSED', 'HALTED'])
 
     def update(self, cloudspace, nodeid=None, corexid=None):
         if not nodeid or not corexid:
             nodeid, name = self.get_container(cloudspace)
-        client = getGridClient(cloudspace.gid, self.models)
+        client = getGridClient(cloudspace.location, self.models)
         data = self.get_config(cloudspace, name)
         client.rawclient.nodes.UpdateGateway(data, name, nodeid)
 
     def get_container(self, cloudspace):
         name = 'vfw_{}'.format(cloudspace.id)
-        if cloudspace.stackId:
-            stack = self.models.stack.get(cloudspace.stackId)
-            nodeid = stack.referenceId
+        if cloudspace.stack:
+            nodeid = cloudspace.stack.referenceId
         else:
-            stack = self.cb.getBestStack(cloudspace.gid)
+            stack = self.cb.getBestStack(cloudspace.location)
             if stack == -1:
                 raise exceptions.ServiceUnavailable("Could not finder provider to deploy virtual router")
-            self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                                {'$set': {'stackId': stack['id']}})
-            nodeid = stack['referenceId']
+            cloudspace.modify(stack=stack)
+            nodeid = stack.referenceId
         return nodeid, name
 
     def destroy(self, cloudspace):
@@ -131,21 +115,19 @@ class NetManager(object):
         """
         nodeid, corexid = self.get_container(cloudspace)
         if corexid:
-            client = getGridClient(cloudspace.gid, self.models)
+            client = getGridClient(cloudspace.location, self.models)
             try:
                 client.rawclient.nodes.DeleteGateway(corexid, nodeid)
             except requests.exceptions.HTTPError as e:
                 # allow 404 this means the container does not exists
                 if e.response.status_code != 404:
                     raise
-            self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                                {'$set': {'status': 'VIRTUAL',
-                                                          'stackId': None}})
+            cloudspace.modify(status='VIRTUAL', stack=None)
 
     def getFreeIPAddress(self, cloudspace):
         machines = self.get_machines(cloudspace.id)
         network = netaddr.IPNetwork(cloudspace.networkcidr)
-        usedips = [netaddr.IPAddress(nic['ipAddress']) for vm in machines for nic in vm['nics'] if nic['type'] == 'vxlan' and nic['networkId'] == cloudspace.networkId]
+        usedips = [netaddr.IPAddress(nic['ipAddress']) for vm in machines for nic in vm.nics if nic.type == 'vxlan' and nic.networkId == cloudspace.networkId]
         usedips.append(network.ip)
         ip = network.broadcast - 1
         while ip in network:

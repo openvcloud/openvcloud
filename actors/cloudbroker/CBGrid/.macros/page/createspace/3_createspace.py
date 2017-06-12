@@ -3,19 +3,21 @@ from JumpScale9Portal.portal.docgenerator.popup import Popup
 
 def main(j, args, params, tags, tasklet):
     import netaddr
+    import bson
+    models = j.portal.tools.models.cloudbroker
     params.result = page = args.page
     accountId = args.getTag('accountId')
-    ccl = j.clients.osis.getNamespace('cloudbroker')
     locations = list()
-    for location in ccl.location.search({})[1:]:
-        locations.append((location['name'], location['locationCode']))
+    for location in models.Location.objects:
+        locations.append((location.name, str(location.id)))
     externalnetworks = list()
 
     def network_sort(pool):
-        return '%04d_%s' % (pool['vlan'], pool['name'])
+        return '%04d_%s' % (pool.vlan, pool.name)
 
-    for pool in sorted(ccl.externalnetwork.search({'accountId': {'$in': [int(accountId), 0]}})[1:], key=network_sort):
-        network = netaddr.IPNetwork('{network}/{subnetmask}'.format(**pool))
+    poolsq = models.ExternalNetwork.objects(account__in=[bson.ObjectId(accountId), None])
+    for pool in sorted(poolsq, key=network_sort):
+        network = netaddr.IPNetwork('{network}/{subnetmask}'.format(**pool.to_dict()))
         externalnetworks.append(('{name} - {network}'.format(name=pool['name'], network=network), pool['id']))
 
     # Placeholder that -1 means no limits are set on the cloud unit
@@ -24,7 +26,7 @@ def main(j, args, params, tags, tasklet):
                   submit_url='/restmachine/cloudbroker/cloudspace/create')
     popup.addText('Name', 'name', required=True)
     popup.addText('Username to grant access', 'access', required=True)
-    popup.addDropdown('Choose Location', 'location', locations)
+    popup.addDropdown('Choose Location', 'locationId', locations)
     popup.addDropdown('Choose External Network', 'externalnetworkId', externalnetworks)
     popup.addText('Max Memory Capacity (GB)', 'maxMemoryCapacity', placeholder=culimitplaceholder, type='float')
     popup.addText('Max VDisk Capacity (GB)', 'maxVDiskCapacity', placeholder=culimitplaceholder, type='number')

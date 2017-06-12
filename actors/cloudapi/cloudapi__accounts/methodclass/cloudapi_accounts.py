@@ -403,7 +403,7 @@ class cloudapi_accounts(BaseActor):
         return consumedamount
 
     # Unexposed actor
-    def getReservedCloudUnits(self, accountId, excludecloudspaceid=None, **kwargs):
+    def getReservedCloudUnits(self, account, excludecloudspaceid=None, **kwargs):
         """
         Calculate the currently reserved cloud units by all cloudspaces under an account
 
@@ -426,13 +426,11 @@ class cloudapi_accounts(BaseActor):
         reservedcudict = {'CU_M': 0, 'CU_C': 0, 'CU_D': 0, 'CU_I': 0, 'CU_NP': 0}
 
         # Aggregate the total consumed cloud units for all cloudspaces in the account
-        for cloudspace in self.models.cloudspace.search({'$fields': ['id', 'resourceLimits'],
-                                                         '$query': {'accountId': accountId,
-                                                                    'status': {'$ne': 'DESTROYED'}}})[1:]:
-            if excludecloudspaceid is not None and cloudspace['id'] == excludecloudspaceid:
+        for cloudspace in self.models.Cloudspace.objects(account=account, status__ne='DESTROYED'):
+            if excludecloudspaceid is not None and cloudspace.id == excludecloudspaceid:
                 continue
 
-            for cukey, cuvalue in cloudspace['resourceLimits'].items():
+            for cukey, cuvalue in cloudspace.resourceLimits.items():
                 # Ignore cu limit if -1 as it indicates that no limit is set
                 if cukey in reservedcudict and cuvalue != -1:
                     reservedcudict[cukey] += cuvalue

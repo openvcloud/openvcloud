@@ -1,21 +1,16 @@
 def main(j, args, params, tags, tasklet):
+    import bson
     page = args.page
     modifier = j.portal.tools.html.htmlfactory.getPageModifierGridDataTables(page)
 
     filters = dict()
     accountId = args.getTag('accountId')
     if accountId:
-        filters['accountId'] = int(accountId)
-
-    def makeNetworkLink(row, field):
-        if row[field]:
-            return '[%(networkId)s|/CBGrid/private network?id=%(networkId)s&gid=%(gid)s]' % row
-        else:
-            return ''
+        filters['account'] = bson.ObjectId(accountId)
 
     def makeExternalNetworkLink(row, field):
         if row[field]:
-            return '[%(externalnetworkip)s|/CBGrid/External Network?networkid=%(externalnetworkId)s]' % row
+            return '[{externalnetworkip}|/CBGrid/External Network?networkid={externalnetworkId}]'.format(externalnetworkip=row.externalnetworkip, externalnetworkId=row.externalnetwork.id)
         else:
             return ''
 
@@ -38,7 +33,7 @@ def main(j, args, params, tags, tasklet):
             'id': 'account'
         }, {
             'name': 'Network ID',
-            'value': makeNetworkLink,
+            'value': '%(networkId)s (%(networkId)04x)',
             'id': 'networkId'
         }, {
             'name': 'Location',

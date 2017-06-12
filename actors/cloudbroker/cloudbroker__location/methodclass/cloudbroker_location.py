@@ -1,9 +1,10 @@
 from js9 import j
 from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal import exceptions
+from cloudbroker.actorlib.baseactor import BaseActor
 
 
-class cloudbroker_grid(object):
+class cloudbroker_location(BaseActor):
     @auth(['level1', 'level2', 'level3'])
     def purgeLogs(self, gid, age='-3d', **kwargs):
         return self.acl.executeJumpscript('cloudscalers', 'logs_purge', args={'age': age}, gid=gid, role='master', wait=False)['result']
@@ -18,24 +19,26 @@ class cloudbroker_grid(object):
         return 'Scheduled check on VMS'
 
     @auth(['level1', 'level2', 'level3'])
-    def rename(self, name, gid, **kwargs):
-        location = next(iter(self.models.location.search({'gid': gid})[1:]), None)
+    def update(self, locationId, name, apiUrl, **kwargs):
+        location = self.models.Location.get(locationId)
         if not location:
-            raise exceptions.NotFound('Could not find location with gid %s' % gid)
-        location['name'] = name
-        self.models.location.set(location)
+            raise exceptions.NotFound('Could not find location with id %s' % locationId)
+        update = {}
+        if name:
+            update['name'] = name
+        if apiUrl:
+            update['apiUrl'] = apiUrl
+        if update:
+            location.modify(update)
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    def add(self, name, gid, locationcode, apiUrl, **kwargs):
-        location = next(iter(self.models.location.search({'gid': gid})[1:]), None)
-        if location:
-            raise exceptions.Conflict("Location with gid %s already exists" % gid)
-        location = self.models.location.new()
-        location.gid = gid
-        location.apiUrl = apiUrl
-        location.flag = 'black'
-        location.locationCode = locationcode
-        location.name = name
-        self.models.location.set(location)
+    def add(self, name, apiUrl, **kwargs):
+        if self.models.Location.objects(name=name).count() > 0:
+            raise exceptions.Conflict("Location with name %s already exists" % name)
+        location = self.models.Location(
+            name=name,
+            apiUrl=apiUrl
+        )
+        location.save()
         return 'Location has been added successfully, do not forget to add networkids and public IPs'

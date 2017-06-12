@@ -1,33 +1,26 @@
 
 def main(j, args, params, tags, tasklet):
+    import bson
+    models = j.portal.tools.models.cloudbroker
     import cgi
     page = args.page
     modifier = j.portal.tools.html.htmlfactory.getPageModifierGridDataTables(page)
     stackid = args.getTag("stackid")
     cloudspaceId = args.getTag("cloudspaceid")
     imageid = args.getTag('imageid')
-    gid = args.getTag('gid')
+    locationid = args.getTag('locationid')
     filters = dict()
-    ccl = j.clients.osis.getNamespace('cloudbroker')
 
     if stackid:
-        stackid = int(stackid)
-        filters['stackId'] = stackid
+        filters['stack'] = bson.ObjectId(stackid)
     if cloudspaceId:
-        filters['cloudspaceId'] = int(cloudspaceId)
+        filters['cloudspace'] = bson.ObjectId(cloudspaceId)
     if imageid:
-        imageid = str(imageid)
-        images = ccl.image.search({'referenceId': imageid})[1:]
-        if images:
-            filters['imageId'] = images[0]['id']
-        else:
-            filters['imageId'] = imageid
+        filters['image'] = bson.ObjectId(imageid)
 
-    if gid:
-        gid = int(gid)
-        stacks = ccl.stack.simpleSearch({'gid': gid})
-        stacksids = [stack['id'] for stack in stacks]
-        filters['stackId'] = {'$in': stacksids}
+    if locationid:
+        cloudspaces = models.Cloudspace.objects(location=locationid).only('id')
+        filters['cloudspace'] = {'$in': [str(cs.id) for cs in cloudspaces]}
 
     def stackLinkify(row, field):
         return '[%s|stack?id=%s]' % (row[field], row[field])
@@ -65,7 +58,7 @@ def main(j, args, params, tags, tasklet):
         }
     ]
 
-    tableid = modifier.addTableFromModel('cloudbroker', 'vmachine', fields, filters, selectable='rows')
+    tableid = modifier.addTableFromModel('cloudbroker', 'VMachine', fields, filters, selectable='rows')
     modifier.addSearchOptions('#%s' % tableid)
     modifier.addSorting('#%s' % tableid, 1, 'desc')
 

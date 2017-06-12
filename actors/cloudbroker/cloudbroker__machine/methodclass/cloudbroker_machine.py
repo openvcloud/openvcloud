@@ -377,8 +377,8 @@ class cloudbroker_machine(BaseActor):
         '''If a machine is abusing the system and violating the usage policies it can be stopped using this procedure.
         A ticket will be created for follow up and visibility, the machine stopped, the image put on slower storage and the ticket is automatically closed if all went well.
         Use with caution!
-        @param:accountId int,,Account ID, extra validation for preventing a wrong machineId
-        @param:machineId int,,Id of the machine
+        @param:accountId str,,Account ID, extra validation for preventing a wrong machineId
+        @param:machineId str,,Id of the machine
         @param:reason str,,Reason
         '''
         machineId = int(machineId)

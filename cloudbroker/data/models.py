@@ -1,5 +1,5 @@
 from mongoengine import fields
-from mongoengine import EmbeddedDocument
+from mongoengine import EmbeddedDocument, Document
 from js9 import j
 from JumpScale9Portal.data.models.Models import Base, Errorcondition
 
@@ -10,6 +10,13 @@ default_meta = {'abstract': True, "db_alias": DB}
 
 class ModelBase(Base):
     meta = default_meta
+
+    def to_dict(self):
+        d = j.data.serializer.json.loads(Document.to_json(self))
+        d.pop("_cls", None)
+        d.pop("_id", None)
+        d['id'] = str(self.id)
+        return d
 
 
 class ACE(EmbeddedDocument):
@@ -22,7 +29,7 @@ class ACE(EmbeddedDocument):
 class Account(ModelBase):
     name = fields.StringField(required=True)
     acl = fields.EmbeddedDocumentListField(ACE)
-    status = fields.StringField(choices=['CONFIRMED', 'UNCONFIRMED', 'DISABLED'])
+    status = fields.StringField(choices=['CONFIRMED', 'UNCONFIRMED', 'DISABLED'], rquired=True)
     updateTime = fields.IntField()
     resourceLimits = fields.DictField()
     sendAccessEmails = fields.BooleanField(default=True)
@@ -37,9 +44,9 @@ class VMAccount(EmbeddedDocument):
 class Image(ModelBase):
     name = fields.StringField(required=True)
     description = fields.StringField()
-    size = fields.IntField()
-    type = fields.StringField()
-    referenceId = fields.StringField()
+    size = fields.IntField(required=True)
+    type = fields.StringField(required=True)
+    referenceId = fields.StringField(required=True)
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'CREATING', 'DELETING'])
     account = fields.ReferenceField(Account)
     acl = fields.EmbeddedDocumentListField(ACE)
@@ -47,15 +54,21 @@ class Image(ModelBase):
     password = fields.StringField()
 
 
+class Location(ModelBase):
+    name = fields.StringField(required=True)
+    apiUrl = fields.StringField()
+
+
 class Stack(ModelBase):
     name = fields.StringField(required=True)
     description = fields.StringField()
     type = fields.StringField()
     images = fields.ListField(fields.ReferenceField(Image))
-    referenceId = fields.StringField()
+    referenceId = fields.StringField(rquired=True)
     error = fields.IntField()
     eco = fields.ReferenceField(Errorcondition)
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'ERROR', 'MAINTENANCE'])
+    location = fields.ReferenceField(Location)
 
 
 class Snapshot(EmbeddedDocument):
@@ -64,18 +77,14 @@ class Snapshot(EmbeddedDocument):
 
 
 class ExternalNetwork(ModelBase):
-    name = fields.StringField()
-    network = fields.StringField()
-    subnetmask = fields.StringField()
-    gateway = fields.StringField()
-    vlan = fields.IntField()
-    account = fields.ReferenceField(Account)
-    ips = fields.ListField(fields.StringField)
-
-
-class Location(ModelBase):
     name = fields.StringField(required=True)
-    apiUrl = fields.StringField()
+    network = fields.StringField(required=True)
+    subnetmask = fields.StringField()
+    gateway = fields.StringField(required=True)
+    vlan = fields.IntField(required=True)
+    account = fields.ReferenceField(Account)
+    ips = fields.ListField(fields.StringField())
+    location = fields.ReferenceField(Location)
 
 
 class Size(ModelBase):
@@ -84,7 +93,7 @@ class Size(ModelBase):
     vcpus = fields.IntField()
     description = fields.StringField()
     locations = fields.ListField(fields.ReferenceField(Location))
-    disks = fields.ListField(fields.IntField)
+    disks = fields.ListField(fields.IntField())
 
 
 class VNC(ModelBase):
@@ -100,8 +109,9 @@ class ForwardRule(EmbeddedDocument):
 
 
 class NetworkIds(ModelBase):
-    freeNetworkIds = fields.ListField(fields.IntField)
-    usedNetworkIds = fields.ListField(fields.IntField)
+    freeNetworkIds = fields.ListField(fields.IntField())
+    usedNetworkIds = fields.ListField(fields.IntField())
+    location = fields.ReferenceField(Location)
 
 
 class Cloudspace(ModelBase):
@@ -115,10 +125,11 @@ class Cloudspace(ModelBase):
     externalnetworkip = fields.StringField()
     externalnetwork = fields.ReferenceField(ExternalNetwork)
     forwardRules = fields.EmbeddedDocumentListField(ForwardRule)
-    allowedVMSizes = fields.ListField(fields.IntField)
+    allowedVMSizes = fields.ListField(fields.IntField())
     status = fields.StringField(choices=['VIRTUAL', 'DEPLOYED', 'DESTROYED'])
     location = fields.ReferenceField(Location)
-    updateTime = fields.IntField()
+    creationTime = fields.IntField(default=j.data.time.getTimeEpoch)
+    updateTime = fields.IntField(default=j.data.time.getTimeEpoch)
     deletionTime = fields.IntField()
     stack = fields.ReferenceField(Stack)
 

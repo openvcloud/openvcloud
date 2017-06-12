@@ -1,18 +1,18 @@
 
 def main(j, args, params, tags, tasklet):
+    models = j.portal.tools.models.cloudbroker
     doc = args.doc
     id = args.getTag('id')
-    gid = args.getTag('gid')
+    locationid = args.getTag('locationid')
     width = args.getTag('width')
     height = args.getTag('height')
     result = "{{jgauge width:%(width)s id:%(id)s height:%(height)s val:%(running)s start:0 end:%(total)s}}"
-    ccl = j.clients.osis.getNamespace('cloudbroker')
-    query = {}
-    if gid:
-        query['gid'] = int(gid)
+    qkwargs = {}
+    if locationid:
+        qkwargs['location'] = locationid
     freeips = list()
-    [freeips.extend(externalnetwork['ips']) for externalnetwork in ccl.externalnetwork.search({})[1:]]
-    total = len(freeips) + ccl.cloudspace.count({'status': 'DEPLOYED'})
+    [freeips.extend(externalnetwork['ips']) for externalnetwork in models.ExternalNetwork.objects(**qkwargs)]
+    total = len(freeips) + models.Cloudspace.objects(status='DEPLOYED', **qkwargs).count()
     if total < 10:
         result += '\n{color:red}** *LESS THAN 10 FREE IPs*{color}'
     result = result % {'height': height,

@@ -1,17 +1,18 @@
 
 def main(j, args, params, tags, tasklet):
+    models = j.portal.tools.models.cloudbroker
     doc = args.doc
     id = args.getTag('id')
-    gid = args.getTag('gid')
+    locationid = args.getTag('locationid')
     width = args.getTag('width')
     height = args.getTag('height')
     result = "{{jgauge width:%(width)s id:%(id)s height:%(height)s val:%(running)s start:0 end:%(total)s}}"
-    ac = j.clients.osis.getCategory(j.core.portal.active.osis, 'cloudbroker', 'cloudspace')
-    query = {'status':{'$ne': 'DESTROYED'}}
-    if gid:
-      query['gid'] = int(gid)
-    total = ac.count()
-    running = ac.count(query)
+    qkwargs = {}
+    if locationid:
+        qkwargs['location'] = locationid
+
+    total = models.Cloudspace.objects(**qkwargs).count()
+    running = models.Cloudspace.objects(status__ne='DESTROYED', **qkwargs).count()
     result = result % {'height': height,
                        'width': width,
                        'running': running,
@@ -19,6 +20,3 @@ def main(j, args, params, tags, tasklet):
                        'total': total}
     params.result = (result, doc)
     return params
-
-def match(j, args, params, tags, tasklet):
-    return True

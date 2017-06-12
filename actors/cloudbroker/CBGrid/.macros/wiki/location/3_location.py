@@ -1,25 +1,17 @@
 def main(j, args, params, tags, tasklet):
-
     params.result = (args.doc, args.doc)
-    gid = args.requestContext.params.get('gid')
-    try:
-        gid = int(gid)  # check like this to prevent long conversion error
-    except:
-        pass
-    if not isinstance(gid, int):
+    locationid = args.requestContext.params.get('id')
+    if not locationid:
         args.doc.applyTemplate({})
         return params
 
-    gid = int(gid)
-    cbclient = j.clients.osis.getNamespace('cloudbroker')
-
-    locations = cbclient.location.search({'gid': gid})[1:]
-    if not locations:
-        args.doc.applyTemplate({'gid': None}, True)
+    models = j.portal.tools.models.cloudbroker
+    location = models.Location.get(locationid)
+    if not location:
+        args.doc.applyTemplate({'id': None})
         return params
 
-    obj = locations[0]
-    args.doc.applyTemplate(obj, True)
+    args.doc.applyTemplate(location.to_dict(), True)
     return params
 
 

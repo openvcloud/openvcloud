@@ -8,23 +8,12 @@ def main(j, args, params, tags, tasklet):
     filters = dict()
     if stackid:
         stack = models.Stack.get(stackid)
-        filters['id'] = {'$in': stack.images}
-
-    def getLocation(field, row):
-        gid = field[row]
-        if not gid:
-            return ''
-        return "[{name} ({gid})|/cbgrid/location?id={id}]".format(id=row.location.id, name=row.location.name)
+        filters['_id'] = {'$in': [img.id for img in stack.images]}
 
     fields = [
         {'name': 'Name',
          'id': 'name',
          'value': "<a href='/cbgrid/image?id=%(id)s'>%(name)s</a>"
-         },
-        {'name': 'Location',
-         'id': 'gid',
-         'filterable': False,
-         'value': getLocation
          },
         {'name': 'Type',
          'id': 'type',

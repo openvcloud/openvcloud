@@ -34,15 +34,15 @@ class cloudapi_cloudspaces(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method addUser")
 
-    def create(self, accountId, location, name, access, externalnetworkId, allowedVMSizes, maxMemoryCapacity='-1', maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
+    def create(self, accountId, locationId, name, access, externalnetworkId, allowedVMSizes, maxMemoryCapacity=-1.0, maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
         """
         Create an extra cloudspace
         Setting a cloud unit maximum to -1 or empty will not put any restrictions on the resource
         param:accountId id of acount this cloudspace belongs to
-        param:location location code for the cloudspace
+        param:locationId locationId for the cloudspace
         param:name name of space to create
         param:access username of a user which has full access to this space
-        param:maxMemoryCapacity max size of memory in GB default=-1
+        param:maxMemoryCapacity max size of memory in GB default=-1.0
         param:maxVDiskCapacity max size of aggregated vdisks in GB default=-1
         param:maxCPUCapacity max number of cpu cores default=-1
         param:maxNetworkPeerTransfer max sent/received network transfer peering default=-1

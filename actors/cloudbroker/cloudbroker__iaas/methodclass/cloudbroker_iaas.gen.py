@@ -23,7 +23,7 @@ class cloudbroker_iaas(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method addExternalIPS")
 
-    def addExternalNetwork(self, name, subnet, gateway, startip, endip, gid, vlan, accountId, **kwargs):
+    def addExternalNetwork(self, name, subnet, gateway, startip, endip, locationId, vlan, accountId, **kwargs):
         """
         Adds a external network range to be used for cloudspaces
         param:name the subnet to add in CIDR notation (x.x.x.x/y)
@@ -31,7 +31,7 @@ class cloudbroker_iaas(j.tools.code.classGetBase()):
         param:gateway gateway of the subnet
         param:startip First IP Address from the range to add
         param:endip Last IP Address from the range to add
-        param:gid id of grid
+        param:locationId id of grid
         param:vlan VLAN Tag
         param:accountId accountId that has exclusive access to this network Tag
         result int

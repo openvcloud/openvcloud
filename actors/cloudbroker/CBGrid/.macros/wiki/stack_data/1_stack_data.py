@@ -1,25 +1,18 @@
 
 def main(j, args, params, tags, tasklet):
+    models = j.portal.tools.models.cloudbroker
     params.result = (args.doc, args.doc)
     stackId = args.requestContext.params.get('id')
-    try:
-        stackId = int(stackId)
-    except:
-        pass
-
-    if not isinstance(stackId, int):
+    if not stackId:
         args.doc.applyTemplate({})
         return params
 
-    stackId = int(stackId)
-    ccl = j.clients.osis.getNamespace('cloudbroker')
-
-    if not ccl.stack.exists(stackId):
-        args.doc.applyTemplate({'id': None}, True)
+    stack = models.Stack.get(stackId)
+    if not stack:
+        args.doc.applyTemplate({'id': None})
         return params
 
-    stack = ccl.stack.get(stackId).dump()
-    args.doc.applyTemplate(stack, True)
+    args.doc.applyTemplate(stack.to_dict(), True)
 
     return params
 

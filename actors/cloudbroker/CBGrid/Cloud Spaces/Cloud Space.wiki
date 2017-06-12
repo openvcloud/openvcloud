@@ -4,7 +4,7 @@
 
 {{cbspace}}
 {{datatables_use}}
-{% if id %}
+{% if cloudspace %}
 
 
 h2. Cloud Space: ${name}
@@ -165,40 +165,38 @@ h2. Cloud Space: ${name}
 
 h3. Details
 |*Cloud Space ID*|$$id|
-|*Account*|[${accountname}|account?id=${accountId}]|
-|*Network ID*|${networkId} (${'%04x' % networkId})|
-{%- if stackId %}
-|*Stack*|[${stackName}|Stack?id=${stackId}]|
-{% endif -%}
-|*End User Portal*| [View Cloud Space|/g8vdc/#/list?cloudspaceId=${id}] |
-|*Status*|${status}|
-|*Creation Time*|{{ts: ${creationTime}}}|
-|*Update Time*|{{ts: ${updateTime}}}|
-|*Location Code*|${location}|
-|*Description*|${descr}|
-|*External IP Address*|[${externalnetworkip or 'Unassigned'}|External Network?networkid=${externalnetworkId}]|
+|*Account*|[${cloudspace.account.name}|account?id=${cloudspace.account.id}]|
+|*Network ID*|${cloudspace.networkId} (${'%04x' % cloudspace.networkId})|
+|*Stack*|${'N/A' if not cloudspace.stack else '[%s|Stack?id=%s]' % (cloudspace.stack.name, cloudspace.stack.id)}|
+|*End User Portal*| [View Cloud Space|/g8vdc/#/list?cloudspaceId=${cloudspace.id}] |
+|*Status*|${cloudspace.status}|
+|*Creation Time*|{{ts: ${cloudspace.creationTime}}}|
+|*Update Time*|{{ts: ${cloudspace.updateTime}}}|
+|*Location*|[${cloudspace.location.name}|/Location?id=${cloudspace.location.id}]|
+|*Description*|${cloudspace.description}|
+|*External IP Address*|[${cloudspace.externalnetworkip or 'Unassigned'}|External Network?networkid=${cloudspace.externalnetwork.id}]|
 
 h3. Cloud Resource Limits
 
-|*Memory Capacity*|${'Unlimited' if reslimits.CU_M == -1  else '%r GB'%(reslimits.CU_M)}|
-|*Virtual Disk Capacity*|${'Unlimited' if reslimits.CU_D == -1  else '%i GB'%(reslimits.CU_D)}|
-|*Number of Virtual CPU Cores*|${'Unlimited' if reslimits.CU_C == -1  else reslimits.CU_C}|
-|*External Network Transfer*|${'Unlimited' if reslimits.CU_NP == -1  else '%i GB'%(reslimits.CU_NP)}|
-|*Number of Public IP Addresses*|${'Unlimited' if reslimits.CU_I == -1  else reslimits.CU_I}|
+|*Memory Capacity*|${'Unlimited' if cloudspace.resourceLimits.CU_M == -1  else '%r GB'%(cloudspace.resourceLimits.CU_M)}|
+|*Virtual Disk Capacity*|${'Unlimited' if cloudspace.resourceLimits.CU_D == -1  else '%i GB'%(cloudspace.resourceLimits.CU_D)}|
+|*Number of Virtual CPU Cores*|${'Unlimited' if cloudspace.resourceLimits.CU_C == -1  else cloudspace.resourceLimits.CU_C}|
+|*External Network Transfer*|${'Unlimited' if cloudspace.resourceLimits.CU_NP == -1  else '%i GB'%(cloudspace.resourceLimits.CU_NP)}|
+|*Number of Public IP Addresses*|${'Unlimited' if cloudspace.resourceLimits.CU_I == -1  else cloudspace.resourceLimits.CU_I}|
 
 h3. Users Access
 {{action: id:'action-GrantUserAccess' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Grant User Access'}}
 ||User Name||E-Mail||ACL||Status||Revoke Access||
-{% for user in users -%}
+{% for user in cloudspace.users -%}
     | {%if user.userstatus!='INVITED' %} [${user.id}|/CBGrid/user?id=${user.id}] {%else%} ${user.id} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{% if user.accessUserType == 'acc' %} User access via account [page |account?id=${accountId}] {% else %} {{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.id}' class:'glyphicon glyphicon-remove'}} {% endif %}|
 {% endfor %}
 
 h3. Port Forwards
-{% if status != "DESTROYED" %}
+{% if cloudspace.status != "DESTROYED" %}
 {{action id:'createportforwarding' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Port Forward'}}
 {% endif %}
 ||Public IP||Public Port||VM IP||VM Port||Protocol||Delete||
-{% for rule in forwardRules -%}
+{% for rule in cloudspace.forwardRules -%}
 |${rule.fromAddr}|${rule.fromPort}|${rule.toAddr}|${rule.toPort}|${rule.protocol.upper()}|{{action: id:'action-DeletePortforwarding' deleterow:true class:'glyphicon glyphicon-remove' data-publicIp:'${rule.fromAddr}' data-publicPort:'${rule.fromPort}' data-proto:'${rule.protocol}'}}|
 {% else -%}
 | | | | | | |
@@ -207,7 +205,7 @@ h3. Port Forwards
 
 h3. Virtual Machines
 
-{% if status != "DESTROYED" %}
+{% if cloudspace.status != "DESTROYED" %}
 {{action id:'createmachine' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Virtual Machine'}}
 {{action id:'importmachine' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Import Virtual Machine'}}
 

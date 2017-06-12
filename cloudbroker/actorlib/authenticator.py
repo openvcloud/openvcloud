@@ -16,7 +16,7 @@ class auth(object):
 
     def getAccountAcl(self, accountId):
         result = dict()
-        account = self.models.account.get(accountId)
+        account = self.models.Account.get(accountId)
         if account.status in ['DESTROYED', 'DESTROYING']:
             return result
         for ace in account.acl:
@@ -28,7 +28,7 @@ class auth(object):
 
     def getCloudspaceAcl(self, cloudspaceId):
         result = dict()
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
         if cloudspace.status in ['DESTROYED', 'DESTROYING']:
             return result
         for ace in cloudspace.acl:
@@ -49,7 +49,7 @@ class auth(object):
 
     def getVMachineAcl(self, machineId):
         result = dict()
-        machine = self.models.vmachine.get(machineId)
+        machine = self.models.VMachine.get(machineId)
 
         for ace in machine.acl:
             if ace.type == 'U':
@@ -71,7 +71,7 @@ class auth(object):
             fullacl = self.expandAcl(users, groups, vmachine.acl)
         else:
             fullacl = set()
-        cloudspace = self.models.cloudspace.get(vmachine.cloudspaceId)
+        cloudspace = vmachine.cloudspace
         fullacl.update(self.expandAclFromCloudspace(users, groups, cloudspace))
         return fullacl
 
@@ -80,7 +80,7 @@ class auth(object):
             fullacl = self.expandAcl(users, groups, cloudspace.acl)
         else:
             fullacl = set()
-        account = self.models.account.get(cloudspace.accountId)
+        account = cloudspace.account
         fullacl.update(self.expandAcl(users, groups, account.acl))
         return fullacl
 
@@ -105,29 +105,27 @@ class auth(object):
                 return func(*args, **kwargs)
             ctx = kwargs['ctx']
             ctx.env['JS_AUDIT'] = True
-            tags = j.core.tags.getObject()
+            tags = j.data.tags.getObject()
             user = ctx.env['beaker.session']['user']
             account = None
             cloudspace = None
             machine = None
             if self.acl:
                 if 'machineId' in kwargs and kwargs['machineId']:
-                    machine = self.models.vmachine.get(int(kwargs['machineId']))
-                    cloudspace = self.models.cloudspace.get(machine.cloudspaceId)
-                    account = self.models.account.get(cloudspace.accountId)
+                    machine = self.models.VMachine.get(kwargs['machineId'])
+                    cloudspace = machine.cloudspace
+                    account = cloudspace.account
                 elif 'diskId' in kwargs and kwargs['diskId']:
-                    disk = self.models.disk.get(int(kwargs['diskId']))
-                    machines = self.models.vmachine.search({'disks': disk.id,
-                                                            'status': {'$ne': 'DESTROYED'}})[1:]
-                    if machines:
-                        machine = self.models.vmachine.get(machines[0]['id'])
-                        cloudspace = self.models.cloudspace.get(machine.cloudspaceId)
-                    account = self.models.account.get(disk.accountId)
+                    disk = self.models.Disk.get(kwargs['diskId'])
+                    machine = self.models.VMachine.objects(disks=disk.id, status__ne='DESTROYED').first()
+                    if machine:
+                        cloudspace = machine.cloudspace
+                    account = disk.account
                 elif 'cloudspaceId' in kwargs and kwargs['cloudspaceId']:
-                    cloudspace = self.models.cloudspace.get(int(kwargs['cloudspaceId']))
-                    account = self.models.account.get(cloudspace.accountId)
+                    cloudspace = self.models.Cloudspace.get(kwargs['cloudspaceId'])
+                    account = cloudspace.account
                 elif 'accountId' in kwargs and kwargs['accountId']:
-                    account = self.models.account.get(int(kwargs['accountId']))
+                    account = self.models.Account.get(kwargs['accountId'])
 
             for key, value in (('accountId', account), ('cloudspaceId', cloudspace), ('machineId', machine)):
                 if value is not None:
@@ -135,7 +133,9 @@ class auth(object):
 
             ctx.env['beaker.session']['tags'] = str(tags)
             if self.isAuthorized(user, account, cloudspace, machine):
-                return func(*args, **kwargs)
+                import ipdb
+                with ipdb.launch_ipdb_on_exception():
+                    return func(*args, **kwargs)
             else:
                 raise exceptions.Forbidden(
                     '''User: "%s" isn't allowed to execute this action.
@@ -199,7 +199,7 @@ class auth(object):
         :param account: account object if authorization should be done on account level
         :return: True if username is authorized to access the resource, False otherwise
         """
-        userobj = j.core.portal.active.auth.getUserInfo(username)
+        userobj = j.portal.tools.models.system.User.objects(name=username).first()
         if not userobj or not userobj.active:
             raise exceptions.Forbidden('User is not allowed to execute action while status is '
                                        'inactive.')

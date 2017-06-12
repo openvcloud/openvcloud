@@ -67,26 +67,30 @@ class cloudbroker_computenode(BaseActor):
         return self.models.stack.search(query)[1:]
 
     @auth(['level1', 'level2', 'level3'], True)
-    def sync(self, gid, **kwargs):
-        gc = getGridClient(gid, self.models)
+    def sync(self, locationId, **kwargs):
+        location = self.models.Location.get(locationId)
+        if not location:
+            raise exceptions.BadRequest("Invalid location passed")
+        gc = getGridClient(location, self.models)
         nodes = gc.getNodes()
         for node, status in nodes:
             nodeid = node['id']
-            res = self.models.stack.search({'referenceId': nodeid, 'gid': gid})
-            if len(res) > 1:
+            stack = self.models.Stack.objects(referenceId=nodeid, location=location).first()
+            if stack:
                 if status:
-                    self.models.stack.updateSearch({'referenceId': nodeid, 'gid': gid, 'status': {'$in': ['INACTIVE']}}, {'$set': {'status': 'ENABLED'}})
+                    stack.modify(status='ENABLED')
                 else:
-                    self.models.stack.updateSearch({'referenceId': nodeid, 'gid': gid, 'status': {'$in': ['ENABLED', 'ERROR']}}, {'$set': {'status': 'INACTIVE'}})
+                    stack.modify(status='INACTIVE')
             else:
-                self.models.stack.set({
-                    'referenceId': node['id'],
-                    'status': 'ENABLED' if status else 'INACTIVE',
-                    'name': node['hostname'] or node['id'],
-                    'type': 'Zero-OS',
-                    'descr': 'Zero-OS node',
-                    'gid': gid,
-                })
+                stack = self.models.Stack(
+                    name=node['hostname'] or node['id'],
+                    referenceId=node['id'],
+                    type='Zero-OS',
+                    status='ENABLED',
+                    description='Zero-OS',
+                    location=location
+                )
+                stack.save()
 
     @auth(['level2', 'level3'], True)
     def enableStacks(self, ids, **kwargs):
@@ -234,7 +238,7 @@ class cloudbroker_computenode(BaseActor):
         """
         Rebalances the btrfs filesystem
         var:name str,, name of the computenode
-        var:gid int,, the grid this computenode belongs to
+        var:locationId str,, the grid this computenode belongs to
         var:mountpoint str,,the mountpoint of the btrfs
         var:uuid str,,if no mountpoint given, uuid is mandatory
         result: bool

@@ -48,9 +48,9 @@ class CloudBroker(object):
         stack.status = 'ENABLED'
         models.stack.set(stack)
 
-    def getBestStack(self, gid, imageId=None, excludelist=[]):
-        client = getGridClient(gid, models)
-        capacityinfo = self.getCapacityInfo(gid, client, imageId)
+    def getBestStack(self, location, imageId=None, excludelist=[]):
+        client = getGridClient(location, models)
+        capacityinfo = self.getCapacityInfo(location, client, imageId)
         if not capacityinfo:
             return -1
         capacityinfo = [node for node in capacityinfo if node['id'] not in excludelist]
@@ -73,30 +73,25 @@ class CloudBroker(object):
         models.vmachine.set(machine)
         return True
 
-    def getCapacityInfo(self, gid, client, imageId=None):
+    def getCapacityInfo(self, location, client, imageId=None):
         resourcesdata = list()
         activenodes = [node['id'] for node in client.getActiveNodes()]
         if imageId:
-            stacks = models.stack.search({"images": imageId, 'gid': gid})[1:]
+            stacks = models.Stack.objects(images=imageId, location=location)
         else:
-            stacks = models.stack.search({'gid': gid})[1:]
-        sizes = {s['id']: s['memory'] for s in models.size.search({'$fields': ['id', 'memory']})[1:]}
+            stacks = models.Stack.objects(location=location)
         for stack in stacks:
-            if stack.get('status', 'ENABLED') == 'ENABLED':
-                if stack['referenceId'] not in activenodes:
+            if stack.status == 'ENABLED':
+                if stack.referenceId not in activenodes:
                     continue
                 # search for all vms running on the stacks
-                usedvms = models.vmachine.search({'$fields': ['id', 'sizeId'],
-                                                  '$query': {'stackId': stack['id'],
-                                                             'status': {'$nin': ['HALTED', 'ERROR', 'DESTROYED']}}
-                                                  }
-                                                 )[1:]
+                usedvms = models.VMachine.objects(stack=stack, status__nin=['HALTED', 'ERROR', 'DESTROYED'])
                 if usedvms:
-                    stack['usedmemory'] = sum(sizes[vm['sizeId']] for vm in usedvms)
+                    stack.usedmemory = sum(vm.size.memory for vm in usedvms)
                 else:
-                    stack['usedmemory'] = 0
+                    stack.usedmemory = 0
                 resourcesdata.append(stack)
-        resourcesdata.sort(key=lambda s: s['usedmemory'])
+        resourcesdata.sort(key=lambda s: s.usedmemory)
         return resourcesdata
 
     def stackImportImages(self, stackId):
@@ -128,28 +123,33 @@ class CloudBroker(object):
             models.networkids.set(networkids)
         return True
 
-    def getFreeNetworkId(self, gid, **kwargs):
+    def getFreeNetworkId(self, location, **kwargs):
         """
         Get a free NetworkId
         result
         """
-        for netid in models.networkids.get(gid).freeNetworkIds:
-            res = models.networkids.updateSearch({'id': gid},
-                                                 {'$pull': {'freeNetworkIds': netid}})
-            if res['nModified'] == 1:
-                models.networkids.updateSearch({'id': gid},
-                                               {'$push': {'usedNetworkIds': netid}})
+        networkids = models.NetworkIds.objects(location=location).first()
+        if not networkids:
+            raise exceptions.ServiceUnavailable("No networkids configured for location")
+        collection = networkids._get_collection()
+        for netid in networkids.freeNetworkIds:
+            res = collection.update_one({'_id': networkids.id},
+                                        {'$pull': {'freeNetworkIds': netid}})
+            if res.modified_count == 1:
+                collection.update_one({'_id': networkids.id},
+                                      {'$push': {'usedNetworkIds': netid}})
                 return netid
 
-    def releaseNetworkId(self, gid, networkid, **kwargs):
+    def releaseNetworkId(self, location, networkid, **kwargs):
         """
         Release a networkid.
         param:networkid int representing the netowrkid to release
         result bool
         """
-        models.networkids.updateSearch({'id': gid},
-                                       {'$pull': {'usedNetworkIds': networkid},
-                                        '$addToSet': {'freeNetworkIds': networkid}})
+        collection = models.NetworkIds._get_collection()
+        collection.update_one({'location': location.id},
+                              {'$pull': {'usedNetworkIds': networkid},
+                               '$addToSet': {'freeNetworkIds': networkid}})
         return True
 
     def checkUser(self, username, activeonly=True):
@@ -269,14 +269,14 @@ class CloudSpace(object):
         self.network = network.Network(models)
 
     def release_resources(self, cloudspace, releasenetwork=True):
-        #  delete routeros
-        if cloudspace.stackId:
+        #  delete vfw
+        if cloudspace.stack:
             self.cb.netmgr.destroy(cloudspace)
         if cloudspace.networkId and releasenetwork:
-            self.cb.releaseNetworkId(cloudspace.gid, cloudspace.networkId)
+            self.cb.releaseNetworkId(cloudspace.location, cloudspace.networkId)
             cloudspace.networkId = None
         if cloudspace.externalnetworkip:
-            self.network.releaseExternalIpAddress(cloudspace.externalnetworkId, cloudspace.externalnetworkip)
+            self.network.releaseExternalIpAddress(cloudspace.externalnetwork, cloudspace.externalnetworkip)
             cloudspace.externalnetworkip = None
         return cloudspace
 
@@ -456,7 +456,7 @@ class Machine(object):
                     else:
                         client.storage.createVolume(disk)
             except Exception as e:
-                eco = j.errorconditionhandler.processPythonExceptionObject(e)
+                eco = j.errorhandler.processPythonExceptionObject(e)
                 self.cleanup(machine)
                 raise exceptions.ServiceUnavailable('Not enough storage resources available to provision the requested machine')
             try:
@@ -464,7 +464,7 @@ class Machine(object):
                 client.machine.create(machine, disks, stack['referenceId'])
                 break
             except Exception as e:
-                eco = j.errorconditionhandler.processPythonExceptionObject(e)
+                eco = j.errorhandler.processPythonExceptionObject(e)
                 self.cb.markProvider(stack['id'], eco)
                 newstackId = 0
                 models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
@@ -514,7 +514,7 @@ class Machine(object):
                 client.machine.start(machine.id, stack['referenceId'])
                 break
             except Exception as e:
-                eco = j.errorconditionhandler.processPythonExceptionObject(e)
+                eco = j.errorhandler.processPythonExceptionObject(e)
                 self.cb.markProvider(stack['id'], eco)
                 newstackId = 0
                 models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
@@ -537,7 +537,7 @@ class Machine(object):
             else:
                 client.machine.stop(machine.id, stack.referenceId)
         except Exception as e:
-            eco = j.errorconditionhandler.processPythonExceptionObject(e)
+            eco = j.errorhandler.processPythonExceptionObject(e)
             self.cb.markProvider(stack.id, eco)
             models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
             raise
@@ -577,7 +577,7 @@ class Machine(object):
         try:
             client.machine.pause(machine.id, stack.referenceId)
         except Exception as e:
-            eco = j.errorconditionhandler.processPythonExceptionObject(e)
+            eco = j.errorhandler.processPythonExceptionObject(e)
             self.cb.markProvider(stack.id, eco)
             models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
             raise
@@ -596,7 +596,7 @@ class Machine(object):
         try:
             client.machine.resume(machine.id, stack.referenceId)
         except Exception as e:
-            eco = j.errorconditionhandler.processPythonExceptionObject(e)
+            eco = j.errorhandler.processPythonExceptionObject(e)
             self.cb.markProvider(stack.id, eco)
             models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
             raise
@@ -620,7 +620,7 @@ class Machine(object):
     #     try:
     #         client.machine.reboot(machine.id, stack.refrenceId)
     #     except Exception as e:
-    #         eco = j.errorconditionhandler.processPythonExceptionObject(e)
+    #         eco = j.errorhandler.processPythonExceptionObject(e)
     #         self.cb.markProvider(stack.id, eco)
     #         machine.status = 'ERROR'
     #         models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})

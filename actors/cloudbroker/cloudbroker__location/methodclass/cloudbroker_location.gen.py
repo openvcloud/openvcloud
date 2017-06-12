@@ -1,6 +1,6 @@
 from js9 import j
 
-class cloudbroker_grid(j.tools.code.classGetBase()):
+class cloudbroker_location(j.tools.code.classGetBase()):
     """
     Operator actions for handling interventions on a a grid
     """
@@ -8,18 +8,16 @@ class cloudbroker_grid(j.tools.code.classGetBase()):
         pass
         
         self._te={}
-        self.actorname="grid"
+        self.actorname="location"
         self.appname="cloudbroker"
-        #cloudbroker_grid_osis.__init__(self)
+        #cloudbroker_location_osis.__init__(self)
 
 
-    def add(self, gid, name, apiUrl, locationcode, **kwargs):
+    def add(self, name, apiUrl, **kwargs):
         """
         Adds a location/grid
-        param:gid id of the grid
         param:name Name of the location
         param:apiUrl Url of the location to add
-        param:locationcode Location code typicly used in dns names
         result 
         """
         #put your code here to implement this method
@@ -45,12 +43,13 @@ class cloudbroker_grid(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method purgeLogs")
 
-    def rename(self, gid, name, **kwargs):
+    def update(self, loacationId, name, apiUrl, **kwargs):
         """
         Rename a grid/location
-        param:gid id of the grid
+        param:loacationId id of the location
         param:name New name of the location
+        param:apiUrl New API URL
         result 
         """
         #put your code here to implement this method
-        raise NotImplementedError ("not implemented method rename")
+        raise NotImplementedError ("not implemented method update")

@@ -1,10 +1,11 @@
+from js9 import j
 try:
     import ujson as json
 except:
     import json
 
 
-def generateUsersList(sclient, objdict, accessUserType, users):
+def generateUsersList(objdict, accessUserType, users):
     """
     Generate the list of users that have ACEs on the account
 
@@ -14,21 +15,21 @@ def generateUsersList(sclient, objdict, accessUserType, users):
     :return: list of users have access to cloudspace
     """
     for acl in objdict['acl']:
-        if acl['userGroupId'] in [user['id'] for user in users]:
+        if acl['userGroupId'] in [user['name'] for user in users]:
             continue
         if acl['type'] == 'U':
-            eusers = sclient.user.simpleSearch({'id': acl['userGroupId']})
-            if eusers:
-                user = eusers[0]
+            userq = j.portal.tools.models.system.User.objects(name=acl['userGroupId'])
+            if userq.count() > 0:
+                user = userq.first().to_dict()
                 user['userstatus'] = acl['status']
             elif acl['status'] == 'INVITED':
                 user = dict()
-                user['id'] = acl['userGroupId']
+                user['name'] = acl['userGroupId']
                 user['emails'] = [acl['userGroupId']]
                 user['userstatus'] = acl['status']
             else:
                 user = dict()
-                user['id'] = acl['userGroupId']
+                user['name'] = acl['userGroupId']
                 user['emails'] = ['N/A']
                 user['userstatus'] = 'N/A'
             user['accessUserType'] = accessUserType
@@ -49,18 +50,17 @@ def main(j, args, params, tags, tasklet):
         args.doc.applyTemplate({'id': None}, False)
         return params
 
-    cloudspaceobj = models.Cloudspace.get(id)
+    cloudspace = models.Cloudspace.get(id)
 
     # Resource limits
-
-    j.apps.cloudbroker.account.cb.fillResourceLimits(cloudspaceobj.resourceLimits)
+    j.apps.cloudbroker.account.cb.fillResourceLimits(cloudspace.resourceLimits)
+    cloudspacedict = cloudspace.to_dict()
 
     users = list()
-    users = generateUsersList(sclient, account, 'acc', users)
-    cloudspacedict['users'] = generateUsersList(sclient, cloudspacedict, 'cl', users)
-    if cloudspacedict['stackId']:
-        cloudspacedict['stackName'] = cbclient.stack.get(cloudspacedict['stackId']).name
-    args.doc.applyTemplate(cloudspacedict, False)
+    users = generateUsersList(cloudspace.account, 'acc', users)
+    cloudspacedict['users'] = generateUsersList(cloudspace, 'cl', users)
+    cloudspace.users = generateUsersList(cloudspace, 'cl', users)
+    args.doc.applyTemplate({'cloudspace': cloudspace}, False)
     return params
 
 

@@ -2,13 +2,13 @@ from JumpScale9Portal.portal.docgenerator.popup import Popup
 
 
 def main(j, args, params, tags, tasklet):
+    models = j.portal.tools.models.cloudbroker
     params.result = page = args.page
-    cloudspaceId = int(args.getTag('cloudspaceId'))
-    scl = j.clients.osis.getNamespace('cloudbroker')
+    cloudspaceId = args.getTag('cloudspaceId')
 
-    cloudspace = scl.cloudspace.get(cloudspaceId)
-    stacks = scl.stack.search({'gid': cloudspace.gid, 'status': 'ENABLED'})[1:]
-    sizes = scl.size.search({})[1:]
+    cloudspace = models.Cloudspace.get(cloudspaceId)
+    stacks = models.Stack.objects(location=cloudspace.location, status='ENABLED')
+    sizes = list(models.Size.objects)
 
     dropdisksizes = list()
     dropstacks = list()

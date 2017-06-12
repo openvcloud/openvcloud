@@ -68,9 +68,8 @@ h3. Stack: ${name}
 }}
 {% endif %}
 
-* *ApiURL*: ${apiUrl}
 * *Description*: ${descr}
-* *ReferenceId*: [${gid}:${referenceId}|/grid/Grid Node?id=${referenceId}&gid=${gid}]
+* *ReferenceId*: ${referenceId}
 {% if eco -%}
 * *Status*: [${status}|/grid/Error Condition?id=${eco}]
 {% else -%}

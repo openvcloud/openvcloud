@@ -1,6 +1,6 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-from cloudbroker.actorlib import authenticator, network
+from cloudbroker.actorlib import authenticator, network, netmgr
 from cloudbroker.actorlib.baseactor import BaseActor
 import netaddr
 import uuid
@@ -143,15 +143,19 @@ class cloudapi_cloudspaces(BaseActor):
         results = self.models.cloudspace.search(query)[1:]
         return results
 
+    def validate_name(self, account, name):
+        if self.models.Cloudspace.objects(account=account.id, name=name, status__ne='DESTROYED').count() > 0:
+            raise exceptions.BadRequest("Cloudspace with name %s already exists" % name)
+
     @authenticator.auth(acl={'account': set('C')})
-    def create(self, accountId, location, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
+    def create(self, accountId, locationId, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
                maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1,
                externalnetworkId=None, allowedVMSizes=[], **kwargs):
         """
         Create an extra cloudspace
 
         :param accountId: id of acount this cloudspace belongs to
-        :param location: name of location
+        :param locationId: if of location
         :param name: name of cloudspace to create
         :param access: username of a user which has full access to this space
         :param maxMemoryCapacity: max size of memory in GB
@@ -164,82 +168,82 @@ class cloudapi_cloudspaces(BaseActor):
         :return int with id of created cloudspace
         """
         accountId = accountId
-        account = self.models.account.get(accountId)
-        if account.status in ['DESTROYED', 'DESTROYING']:
+        account = self.models.Account.get(accountId)
+        if not account or account.status in ['DESTROYED', 'DESTROYING']:
             raise exceptions.NotFound('Account does not exist')
-        locations = self.models.location.search({'locationCode': location})[1:]
-        if not locations:
+        location = self.models.Location.get(locationId)
+        if not location:
             raise exceptions.BadRequest('Location %s does not exists' % location)
-        location = locations[0]
         if externalnetworkId:
-            if self.models.externalnetwork.count({'id': externalnetworkId,
-                                                  'gid': location['gid'],
-                                                  'accountId': {'$in': [accountId, 0]}}) == 0:
+            externalnetwork = self.models.ExternNetwork.get(externalnetworkId)
+            if not externalnetwork:
                 raise exceptions.BadRequest('Could not find externalnetwork with id %s' % externalnetworkId)
+            if externalnetwork.account and externalnetwork.account.id != account.id:
+                raise exceptions.BadRequest('ExternalNetwork belongs to another account')
+            if externalnetwork.location.id != location.id:
+                raise exceptions.BadRequest('ExternalNetwork does not belong to currenct location')
 
-        active_cloudspaces = self._listActiveCloudSpaces(accountId)
-        # Extra cloudspaces require a payment and a credit check
+        self.validate_name(account, name)
 
-        if name in [space['name'] for space in active_cloudspaces]:
-            raise exceptions.Conflict('Cloud Space with name %s already exists.' % name)
+        ace = self.models.ACE(
+            userGroupId=access,
+            status='CONFIRMED',
+            type='U',
+            right='CXDRAU'
+        )
 
-        cs = self.models.cloudspace.new()
-        cs.name = name
-        cs.accountId = accountId
-        cs.externalnetworkId = externalnetworkId
-        cs.allowedVMSizes = allowedVMSizes
-        cs.location = location['locationCode']
-        cs.gid = location['gid']
-        ace = cs.new_acl()
-        ace.userGroupId = access
-        ace.type = 'U'
-        ace.right = 'CXDRAU'
-        ace.status = 'CONFIRMED'
+        resourceLimits = {'CU_M': maxMemoryCapacity,
+                          'CU_D': maxVDiskCapacity,
+                          'CU_C': maxCPUCapacity,
+                          'CU_NP': maxNetworkPeerTransfer,
+                          'CU_I': maxNumPublicIP}
+        self.cb.fillResourceLimits(resourceLimits)
 
-        cs.resourceLimits = {'CU_M': maxMemoryCapacity,
-                             'CU_D': maxVDiskCapacity,
-                             'CU_C': maxCPUCapacity,
-                             'CU_NP': maxNetworkPeerTransfer,
-                             'CU_I': maxNumPublicIP}
-        self.cb.fillResourceLimits(cs.resourceLimits)
-
-        if cs.resourceLimits['CU_I'] != -1 and cs.resourceLimits['CU_I'] < 1:
+        if resourceLimits['CU_I'] != -1 and resourceLimits['CU_I'] < 1:
             raise exceptions.BadRequest("Cloudspace must have reserve at least 1 Public IP "
                                         "address for its VFW")
 
-        cs.status = 'VIRTUAL'
-        networkid = self.cb.getFreeNetworkId(cs.gid)
+        networkid = self.cb.getFreeNetworkId(location)
         if not networkid:
-            raise RuntimeError("Failed to get networkid")
+            raise exceptions.ServiceUnavailable("Failed to get networkid")
 
-        cs.networkId = networkid
-        cs.secret = str(uuid.uuid4())
-        cs.creationTime = int(time.time())
-        cs.updateTime = int(time.time())
-        # Validate that the specified CU limits can be reserved on account, since there is a
-        # validation earlier that maxNumPublicIP > 0 (or -1 meaning unlimited), this check will
-        # make sure that 1 Public IP address will be reserved for this cloudspace
-        self._validateAvaliableAccountResources(cs, maxMemoryCapacity, maxVDiskCapacity,
-                                                maxCPUCapacity, maxNetworkPeerTransfer, maxNumPublicIP)
-        cs.id = self.models.cloudspace.set(cs)[0]
-
-        networkid = cs.networkId
-        netinfo = self.network.getExternalIpAddress(cs.gid, cs.externalnetworkId)
+        netinfo = self.network.getExternalIpAddress(location, externalnetworkId)
         if netinfo is None:
-            self.models.cloudspace.delete(cs.id)
             raise exceptions.ServiceUnavailable("No available external IP Addresses")
 
         pool, externalipaddress = netinfo
 
-        cs.externalnetworkId = pool.id
+        cs = self.models.Cloudspace(
+            name=name,
+            account=account,
+            externalnetwork=pool.id,
+            externalnetworkip=str(externalipaddress),
+            networkcidr=netmgr.DEFAULTCIDR,
+            allowedVMSizes=allowedVMSizes,
+            location=location,
+            acl=[ace],
+            resourceLimits=resourceLimits,
+            status='VIRTUAL',
+            networkId=networkid,
+        )
 
-        cs.externalnetworkip = str(externalipaddress)
-        self.models.cloudspace.set(cs)
+        # Validate that the specified CU limits can be reserved on account, since there is a
+        # validation earlier that maxNumPublicIP > 0 (or -1 meaning unlimited), this check will
+        # make sure that 1 Public IP address will be reserved for this cloudspace
+        try:
+            self._validateAvaliableAccountResources(cs, maxMemoryCapacity, maxVDiskCapacity,
+                                                    maxCPUCapacity, maxNetworkPeerTransfer, maxNumPublicIP)
+        except:
+            self.network.releaseExternalIpAddress(pool, str(externalipaddress))
+            self.cb.releaseNetworkId(location, networkid)
+            raise
+
+        cs.save()
 
         # deploy async.
         gevent.spawn(self.deploy, cloudspaceId=cs.id, **kwargs)
 
-        return cs.id
+        return str(cs.id)
 
     @authenticator.auth(acl={'cloudspace': set('C')})
     def deploy(self, cloudspaceId, **kwargs):
@@ -250,37 +254,29 @@ class cloudapi_cloudspaces(BaseActor):
         :return: status of deployment
         """
         try:
-            with self.models.cloudspace.lock(cloudspaceId):
-                cs = self.models.cloudspace.get(cloudspaceId)
-                if cs.status != 'VIRTUAL':
-                    return
-                cs.status = 'DEPLOYING'
-                self.models.cloudspace.set(cs)
-            pool = self.models.externalnetwork.get(cs.externalnetworkId)
-
+            cs = self.models.Cloudspace.get(cloudspaceId)
+            if cs.status != 'VIRTUAL':
+                return
+            cs.modify(status='DEPLOYING')
+            pool = cs.externalnetwork
             if cs.externalnetworkip is None:
-                pool, externalipaddress = self.network.getExternalIpAddress(cs.gid, cs.externalnetworkId)
+                pool, externalipaddress = self.network.getExternalIpAddress(cs.location, cs.externalnetwork)
                 cs.externalnetworkip = str(externalipaddress)
-                self.models.cloudspace.updateSearch({'id': cs.id},
-                                                    {'$set': {'externalnetworkip': str(externalipaddress)}})
+                cs.modify(externalnetworkip=str(externalipaddress))
 
             externalipaddress = netaddr.IPNetwork(cs.externalnetworkip)
 
             try:
                 self.netmgr.create(cs)
             except:
-                self.network.releaseExternalIpAddress(pool.id, str(externalipaddress))
-                self.models.cloudspace.updateSearch({'id': cs.id},
-                                                    {'$set': {'externalnetworkip': None,
-                                                              'status': 'VIRTUAL'}})
+                self.network.releaseExternalIpAddress(pool, str(externalipaddress))
+                cs.modify(status='VIRTUAL', externalnetworkip=None)
                 raise
 
-            self.models.cloudspace.updateSearch({'id': cs.id},
-                                                {'$set': {'updateTime': int(time.time()),
-                                                          'status': 'DEPLOYED'}})
+            cs.modify(status='DEPLOYED', updateTime=int(time.time()))
             return 'DEPLOYED'
         except Exception as e:
-            j.errorconditionhandler.processPythonExceptionObject(e, message="Cloudspace deploy aysnc call exception.")
+            j.errorhandler.processPythonExceptionObject(e, message="Cloudspace deploy aysnc call exception.")
             raise
 
     @authenticator.auth(acl={'cloudspace': set('D')})
@@ -291,26 +287,17 @@ class cloudapi_cloudspaces(BaseActor):
         :param cloudspaceId: id of the cloudspace
         :return True if deletion was successful
         """
-        cloudspaceId = int(cloudspaceId)
         # A cloudspace may not contain any resources any more
-        query = {'cloudspaceId': cloudspaceId, 'status': {'$ne': 'DESTROYED'}}
-        results = self.models.vmachine.search(query)[1:]
-        if len(results) > 0:
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
+        if self.models.VMachine.objects(cloudspace=cloudspace.id, status__ne='DESTROYED').count() > 0:
             raise exceptions.Conflict(
                 'In order to delete a CloudSpace it can not contain Machines.')
-        # The last cloudspace in a space may not be deleted
-        with self.models.cloudspace.lock(cloudspaceId):
-            cloudspace = self.models.cloudspace.get(cloudspaceId)
-            if cloudspace.status == 'DEPLOYING':
-                raise exceptions.BadRequest('Can not delete a CloudSpace that is being deployed.')
+        if cloudspace.status == 'DEPLOYING':
+            raise exceptions.BadRequest('Can not delete a CloudSpace that is being deployed.')
 
-        cloudspace.status = "DESTROYING"
-        self.models.cloudspace.set(cloudspace)
+        cloudspace.modify(status='DESTROYING')
         cloudspace = self.cb.cloudspace.release_resources(cloudspace)
-        cloudspace.status = 'DESTROYED'
-        cloudspace.deletionTime = int(time.time())
-        cloudspace.updateTime = int(time.time())
-        self.models.cloudspace.set(cloudspace)
+        cloudspace.modify(status='DESTROYED', deletionTime=int(time.time()), updateTime=int(time.time()))
         return True
 
     @authenticator.auth(acl={'account': set('A')})
@@ -604,14 +591,14 @@ class cloudapi_cloudspaces(BaseActor):
             calculations
         :return: True if all required CUs are available in account
         """
-        accountcus = self.models.account.get(cloudspace.accountId).resourceLimits
+        accountcus = cloudspace.account.resourceLimits
         self.cb.fillResourceLimits(accountcus)
         if excludecloudspace:
             excludecloudspaceid = cloudspace.id
         else:
             excludecloudspaceid = None
 
-        reservedcus = j.apps.cloudapi.accounts.getReservedCloudUnits(cloudspace.accountId,
+        reservedcus = j.apps.cloudapi.accounts.getReservedCloudUnits(cloudspace.account,
                                                                      excludecloudspaceid)
 
         if maxMemoryCapacity:

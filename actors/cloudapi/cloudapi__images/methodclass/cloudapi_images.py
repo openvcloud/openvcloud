@@ -13,27 +13,33 @@ class cloudapi_images(BaseActor):
         """
         List the available images, filtering can be based on the cloudspace and the user which is doing the request
         """
+        import bson
         fields = ['id', 'name', 'description', 'type', 'size', 'username', 'accountId', 'status']
+        qkwargs = {
+            'referenceId__ne': None,
+            'status': 'CREATED'
+        }
         if accountId:
-            q = {'referenceId': {'$ne': None}, 'status': 'CREATED', 'accountId': {"$in": [0, int(accountId)]}}
+            qkwargs['account__in'] = [bson.ObjectId(accountId), None]
         else:
-            q = {'referenceId': {'$ne': None}, 'status': 'CREATED', 'accountId': 0}
-        query = {'$query': q, '$fields': fields}
+            qkwargs['account'] = None
 
         if cloudspaceId:
-            cloudspace = self.models.cloudspace.get(cloudspaceId)
-            q['gid'] = cloudspace.gid
+            cloudspace = self.models.Cloudspace.get(cloudspaceId)
+            stacks = self.models.Stack.objects(location=cloudspace.location).no_dereference()
+            imageids = set()
+            for stack in stacks:
+                for image in stack.images:
+                    imageids.add(image.id)
+            qkwargs['id__in'] = list(imageids)
 
-        results = self.models.image.search(query)[1:]
+        results = self.models.Image.objects(**qkwargs)
 
-        def imagesort(image_a, image_b):
-            def getName(image):
-                name = "%d %s %s" % (image['accountId'] or 0, image['type'], image['name'])
-                return name
-            return cmp(getName(image_a), getName(image_b))
+        def getName(image):
+            name = "%d %s %s" % (image['accountId'] or 0, image['type'], image['name'])
+            return name
 
-        return sorted(results, cmp=imagesort)
-
+        return sorted(results, key=getName)
 
     def delete(self, imageId, **kwargs):
         """

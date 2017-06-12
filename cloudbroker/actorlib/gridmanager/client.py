@@ -7,9 +7,8 @@ gridclients = {}
 
 
 class GridClient(object):
-    def __init__(self, gid, models):
-        location = models.location.search({'gid': gid})[1]
-        self.rawclient = APIClient(location['apiUrl'].rstrip('/'))
+    def __init__(self, location, models):
+        self.rawclient = APIClient(location.apiUrl.rstrip('/'))
         self.models = models
         self._network = None
         self._storage = None
@@ -52,10 +51,10 @@ class BaseManager(object):
         self.models = models
 
 
-def getGridClient(gid, models):
+def getGridClient(location, models):
     """
     Get gridclient from gid
     """
-    if gid not in gridclients:
-        gridclients[gid] = GridClient(gid, models)
-    return gridclients[gid]
+    if location.id not in gridclients:
+        gridclients[location.id] = GridClient(location, models)
+    return gridclients[location.id]

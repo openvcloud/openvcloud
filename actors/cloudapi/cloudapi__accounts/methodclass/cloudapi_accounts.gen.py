@@ -24,12 +24,12 @@ class cloudapi_accounts(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method addUser")
 
-    def create(self, name, access, maxMemoryCapacity='-1', maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
+    def create(self, name, access, maxMemoryCapacity=-1.0, maxVDiskCapacity=-1, maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, **kwargs):
         """
         Create a extra an account (Method not implemented)
         param:name name of account to create
         param:access list of ids of users which have full access to this account
-        param:maxMemoryCapacity max size of memory in GB default=-1
+        param:maxMemoryCapacity max size of memory in GB default=-1.0
         param:maxVDiskCapacity max size of aggregated vdisks in GB default=-1
         param:maxCPUCapacity max number of cpu cores default=-1
         param:maxNetworkPeerTransfer max sent/received network transfer peering default=-1

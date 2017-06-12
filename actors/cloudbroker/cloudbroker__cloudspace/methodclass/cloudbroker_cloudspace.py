@@ -39,13 +39,10 @@ class cloudbroker_cloudspace(BaseActor):
                             error='Failed to delete Cloud Space')
 
     def _destroy(self, cloudspace, reason, ctx):
-        with self.models.cloudspace.lock(cloudspace['id']):
-            cloudspace = self.models.cloudspace.get(cloudspace['id']).dump()
-            if cloudspace['status'] == 'DEPLOYING':
-                raise exceptions.BadRequest('Can not delete a CloudSpace that is being deployed.')
-        status = cloudspace['status']
-        cloudspace['status'] = 'DESTROYING'
-        self.models.cloudspace.set(cloudspace)
+        if cloudspace.status == 'DEPLOYING':
+            raise exceptions.BadRequest('Can not delete a CloudSpace that is being deployed.')
+        status = cloudspace.status
+        cloudspace.modify(status='DESTROYING')
         title = 'Deleting Cloud Space %(name)s' % cloudspace
         try:
             # delete machines
@@ -57,19 +54,12 @@ class cloudbroker_cloudspace(BaseActor):
                     ctx.events.sendMessage(title, 'Deleting Virtual Machine %s/%s' % (idx + 1, len(machines)))
                     j.apps.cloudbroker.machine.destroy(machineId, reason)
         except:
-            cloudspace = self.models.cloudspace.get(cloudspace['id']).dump()
-            cloudspace['status'] = status
-            self.models.cloudspace.set(cloudspace)
+            cloudspace.modify(status=status)
             raise
 
-        # delete routeros
+        # delete vfw
         ctx.events.sendMessage(title, 'Deleting Virtual Firewall')
-        csobj = self.models.cloudspace.new()
-        csobj.load(cloudspace)
-        self.cb.netmgr.destroy(csobj)
-        self.cb.cloudspace.release_resources(csobj)
-        self.models.cloudspace.updateSearch({'id': cloudspace['id']},
-                                            {'$set': {'status': 'DESTROYED'}})
+        self.cb.actors.cloudspaces.delete(cloudapaceId=cloudspace.id)
         return True
 
     @auth(['level1', 'level2', 'level3'])
@@ -223,7 +213,7 @@ class cloudbroker_cloudspace(BaseActor):
                                              maxNetworkPeerTransfer=maxNetworkPeerTransfer, maxNumPublicIP=maxNumPublicIP, allowedVMSizes=allowedVMSizes)
 
     @auth(['level1', 'level2', 'level3'])
-    def create(self, accountId, location, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
+    def create(self, accountId, locationId, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
                maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, externalnetworkId=None, allowedVMSizes=[], **kwargs):
         """
         Create a cloudspace
@@ -238,8 +228,7 @@ class cloudbroker_cloudspace(BaseActor):
         :param allowedVMSizes: alowed sizes for a cloudspace
         :return: True if update was successful
         """
-        user = self.syscl.user.search({'id': access})[1:]
-        if not user:
+        if self.syscl.User.objects(name=access).count() == 0:
             raise exceptions.NotFound('Username "%s" not found' % access)
 
         resourcelimits = {'CU_M': maxMemoryCapacity,
@@ -254,7 +243,7 @@ class cloudbroker_cloudspace(BaseActor):
         maxNetworkPeerTransfer = resourcelimits['CU_NP']
         maxNumPublicIP = resourcelimits['CU_I']
 
-        return self.cb.actors.cloudapi.cloudspaces.create(accountId=accountId, location=location, name=name,
+        return self.cb.actors.cloudapi.cloudspaces.create(accountId=accountId, locationId=locationId, name=name,
                                                           access=access, maxMemoryCapacity=maxMemoryCapacity,
                                                           maxVDiskCapacity=maxVDiskCapacity, maxCPUCapacity=maxCPUCapacity,
                                                           maxNetworkPeerTransfer=maxNetworkPeerTransfer,

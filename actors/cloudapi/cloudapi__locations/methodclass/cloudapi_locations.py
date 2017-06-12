@@ -1,5 +1,5 @@
-from js9 import j
 from cloudbroker.actorlib.baseactor import BaseActor
+
 
 class cloudapi_locations(BaseActor):
 
@@ -17,4 +17,4 @@ class cloudapi_locations(BaseActor):
 
         :return protal url
         """
-        return self.hrd.getStr('instance.cloudbroker.portalurl')
+        return self.config['portalurl']
