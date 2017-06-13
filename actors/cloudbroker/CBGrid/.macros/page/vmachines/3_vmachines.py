@@ -20,10 +20,10 @@ def main(j, args, params, tags, tasklet):
 
     if locationid:
         cloudspaces = models.Cloudspace.objects(location=locationid).only('id')
-        filters['cloudspace'] = {'$in': [str(cs.id) for cs in cloudspaces]}
+        filters['cloudspace'] = {'$in': [cs.id for cs in cloudspaces]}
 
     def stackLinkify(row, field):
-        return '[%s|stack?id=%s]' % (row[field], row[field])
+        return '[%s|stack?id=%s]' % (row.stack.name, row.stack.id)
 
     def nameLinkify(row, field):
         val = row[field]
@@ -32,7 +32,7 @@ def main(j, args, params, tags, tasklet):
         return '[%s|Virtual Machine?id=%s]' % (val, row['id'])
 
     def spaceLinkify(row, field):
-        return '[%s|cloud space?id=%s]' % (row[field], row[field])
+        return '[%s|cloud space?id=%s]' % (row.cloudspace.name, row.cloudspace.id)
 
     fields = [
         {
@@ -50,11 +50,15 @@ def main(j, args, params, tags, tasklet):
         }, {
             'name': 'Cloud Space',
             'value': spaceLinkify,
-            'id': 'cloudspaceId'
+            'id': 'cloudspace',
+            'filterable': False,
+            'orderable': False
         }, {
-            'name': 'Stack ID',
+            'name': 'Stack',
             'value': stackLinkify,
-            'id': 'stackId'
+            'id': 'stack',
+            'filterable': False,
+            'orderable': False
         }
     ]
 

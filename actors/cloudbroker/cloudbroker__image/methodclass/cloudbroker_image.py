@@ -35,7 +35,7 @@ class cloudbroker_image(BaseActor):
         image.size = size
         image.description = description
         image.accountId = accountId or 0
-        image.status = 'CREATED'
+        image.status = 'ENABLED'
         image.type = type
         image.referenceId = referenceId
         return self.models.image.set(image)[0]
@@ -84,23 +84,17 @@ class cloudbroker_image(BaseActor):
     def updateNodes(self, imageId, enabledStacks, **kwargs):
         enabledStacks = enabledStacks or list()
 
-        enabledStacks = [int(x) for x in enabledStacks]
-        images = self.models.image.search({'id': imageId})[1:]
-        if not images:
+        enabledStacks = [x for x in enabledStacks]
+        image = self.models.Image.get(imageId)
+        if not image:
             raise exceptions.BadRequest("Image Unavailable, is it synced?")
-        image = images[0]
-        for stack in self.models.stack.search({'images': image['id']})[1:]:
-            if stack['id'] not in enabledStacks:
-                if image['id'] in stack['images']:
-                    stack['images'].remove(image['id'])
-                    self.models.stack.set(stack)
+        for stack in self.models.Stack.objects(images=image):
+            if str(stack.id) not in enabledStacks:
+                stack.update(pull_images=image)
             else:
-                enabledStacks.remove(stack['id'])
+                enabledStacks.remove(str(stack.id))
 
         for stackid in enabledStacks:
-            stack = self.models.stack.get(stackid)
-            if image['id'] not in stack.images:
-                stack.images.append(image['id'])
-                self.models.stack.set(stack)
-
+            stack = self.models.Stack.get(stackid)
+            stack.update(add_to_set__images=image)
         return True

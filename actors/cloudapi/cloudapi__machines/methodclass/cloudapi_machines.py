@@ -3,7 +3,6 @@ from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib import authenticator, enums, network
 from cloudbroker.actorlib.baseactor import BaseActor
 import time
-import itertools
 import re
 import requests
 import gevent
@@ -518,21 +517,22 @@ class cloudapi_machines(BaseActor):
 
         """
         datadisks = datadisks or []
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        self.cb.machine.validateCreate(cloudspace, name, sizeId, imageId, disksize, datadisks)
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
+
+        size, image = self.cb.machine.validateCreate(cloudspace, name, sizeId, imageId, disksize, datadisks)
         # Validate that enough resources are available in the CU limits to create the machine
-        size = self.models.size.get(sizeId)
         totaldisksize = sum(datadisks + [disksize])
-        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace.id, size.vcpus,
+        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace, size.vcpus,
                                                                    size.memory / 1024.0, totaldisksize)
-        machine = self.cb.machine.createModel(name, description, cloudspace, imageId,
-                                              sizeId, disksize, datadisks)
+        machine = self.cb.machine.createModel(name, description, cloudspace, image,
+                                              size, disksize, datadisks)
         try:
             self.cb.netmgr.update(cloudspace)
-            return self.cb.machine.create(machine, cloudspace, imageId, None)
+            self.cb.machine.create(machine, cloudspace, image, None)
         except:
             self.cb.machine.cleanup(machine)
             raise
+        return str(machine.id)
 
     @authenticator.auth(acl={'cloudspace': set('X')})
     def delete(self, machineId, **kwargs):
@@ -616,30 +616,26 @@ class cloudapi_machines(BaseActor):
         ctx = kwargs['ctx']
         if not cloudspaceId:
             raise exceptions.BadRequest('Please specify a cloudsapce ID.')
-        cloudspaceId = int(cloudspaceId)
-        fields = ['id', 'referenceId', 'cloudspaceid', 'hostname', 'imageId', 'name',
-                  'nics', 'sizeId', 'status', 'stackId', 'disks', 'creationTime', 'updateTime']
+        fields = ['id', 'referenceId', 'cloudspace', 'hostName', 'image', 'name',
+                  'nics', 'size', 'status', 'stack', 'disks', 'creationTime', 'updateTime']
 
         user = ctx.env['beaker.session']['user']
-        userobj = j.core.portal.active.auth.getUserInfo(user)
+        userobj = j.portal.tools.server.active.auth.getUserInfo(user)
         groups = userobj.groups
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
         auth = authenticator.auth()
         acl = auth.expandAclFromCloudspace(user, groups, cloudspace)
-        q = {"cloudspaceId": cloudspaceId,
+        q = {"cloudspace": cloudspace.id,
              "status": {"$nin": ["DESTROYED", "ERROR", ""]},
              "type": "VIRTUAL"}
         if 'R' not in acl and 'A' not in acl:
             q['acl.userGroupId'] = user
 
-        query = {'$query': q, '$fields': fields}
-        results = self.models.vmachine.search(query)[1:]
+        results = self.models.VMachine.find(q).only(*fields)
         machines = []
-        alldisks = list(itertools.chain(*[m['disks'] for m in results]))
-        query = {'$query': {'id': {'$in': alldisks}}, '$fields': ['id', 'sizeMax']}
-        disks = {disk['id']: disk.get('sizeMax', 0) for disk in self.models.disk.search(query, size=0)[1:]}
-        for res in results:
-            size = sum(disks.get(diskid, 0) for diskid in res['disks'])
+        for machine in results:
+            res = machine.to_dict()
+            size = sum(d.size for d in machine.disks)
             res['storage'] = size
             machines.append(res)
         return machines

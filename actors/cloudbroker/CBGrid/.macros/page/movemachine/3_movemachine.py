@@ -1,14 +1,14 @@
 from JumpScale9Portal.portal.docgenerator.popup import Popup
 
-def main(j, args, params, tags, tasklet):
-    params.result = page = args.page
-    machineId = int(args.getTag('machineId'))
-    scl = j.clients.osis.getNamespace('cloudbroker')
 
-    vmachine = scl.vmachine.get(machineId)
-    cloudspace = scl.cloudspace.get(vmachine.cloudspaceId)
-    stacks = scl.stack.search({'status': 'ENABLED', 'gid': cloudspace.gid, 'images': vmachine.imageId})[1:]
-    cpu_nodes = [(stack['name'], stack['id']) for stack in stacks if vmachine.stackId != stack['id']]
+def main(j, args, params, tags, tasklet):
+    models = j.portal.tools.models.cloudbroker
+    params.result = page = args.page
+    machineId = args.getTag('machineId')
+
+    vmachine = models.VMachine.get(machineId)
+    stacks = models.Stack.objects(status='ENABLED', location=vmachine.cloudspace.location, images=vmachine.image)
+    cpu_nodes = [(stack.name, str(stack.id)) for stack in stacks if vmachine.stack != stack]
 
     popup = Popup(id='movemachine', header='Move machine to another CPU node',
                   submit_url='/restmachine/cloudbroker/machine/moveToDifferentComputeNode',
@@ -21,6 +21,3 @@ def main(j, args, params, tags, tasklet):
     popup.write_html(page)
 
     return params
-
-def match(j, args, params, tags, tasklet):
-    return True

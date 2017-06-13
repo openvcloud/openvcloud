@@ -6,7 +6,7 @@
   action: /restmachine/cloudbroker/machine/start
   hideon:
   - RUNNING
-  hideonInput: ${status}
+  hideonInput: ${vmachine.status}
   data:
    machineId: $$id
 
@@ -14,7 +14,7 @@
   action: /restmachine/cloudbroker/machine/stop
   hideon:
   - HALTED
-  hideonInput: ${status}
+  hideonInput: ${vmachine.status}
   data:
    machineId: $$id
   input:
@@ -26,7 +26,7 @@
 #  - HALTED
 #  data:
 #   machineId: $$id
-#   accountId: ${accountId}#
+#   accountId: ${vmachine.accountId}#
 #
 #  input:
 #  - reason
@@ -44,7 +44,7 @@
   - HALTED
   - ERROR
   - PAUSED
-  hideonInput: ${status}
+  hideonInput: ${vmachine.status}
   data:
    machineId: $$id
   input:
@@ -56,7 +56,7 @@
   - HALTED
   - RUNNING
   - ERROR
-  hideonInput: ${status}
+  hideonInput: ${vmachine.status}
   data:
    machineId: $$id
   input:
@@ -114,7 +114,7 @@
 #- display: Backup And Destroy
 #  action: /restmachine/cloudbroker/machine/backupAndDestroy
 #  data:
-#   accountId: ${accountId}
+#   accountId: ${vmachine.accountId}
 #   machineId: $$id
 #  input:
 #  - reason
@@ -197,7 +197,7 @@
     label: Reason
     type: text
 
-{% if status == 'HALTED' %}
+{% if vmachine.status == 'HALTED' %}
 - display: Resize Machine
   action: '#resizemachine'
 

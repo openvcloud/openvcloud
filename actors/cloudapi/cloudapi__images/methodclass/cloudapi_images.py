@@ -14,32 +14,35 @@ class cloudapi_images(BaseActor):
         List the available images, filtering can be based on the cloudspace and the user which is doing the request
         """
         import bson
-        fields = ['id', 'name', 'description', 'type', 'size', 'username', 'accountId', 'status']
+        fields = ['id', 'name', 'description', 'type', 'size', 'username', 'password', 'account', 'status']
         qkwargs = {
             'referenceId__ne': None,
-            'status': 'CREATED'
+            'status': 'ENABLED'
         }
         if accountId:
             qkwargs['account__in'] = [bson.ObjectId(accountId), None]
-        else:
-            qkwargs['account'] = None
 
+        images = set()
         if cloudspaceId:
             cloudspace = self.models.Cloudspace.get(cloudspaceId)
-            stacks = self.models.Stack.objects(location=cloudspace.location).no_dereference()
-            imageids = set()
+            stacks = self.models.Stack.objects(location=cloudspace.location)
             for stack in stacks:
                 for image in stack.images:
-                    imageids.add(image.id)
-            qkwargs['id__in'] = list(imageids)
-
-        results = self.models.Image.objects(**qkwargs)
+                    if image.status == 'ENABLED' and image.referenceId:
+                        if accountId and image.account and str(image.account.id) != accountId:
+                            continue
+                        images.add(image)
+        else:
+            images = self.models.Image.objects(**qkwargs).only(*fields)
 
         def getName(image):
-            name = "%d %s %s" % (image['accountId'] or 0, image['type'], image['name'])
+            name = "%s %s %s" % (image.account.id if image.account else 0, image.type, image)
             return name
 
-        return sorted(results, key=getName)
+        results = []
+        for image in sorted(images, key=getName):
+            results.append(image.to_dict())
+        return results
 
     def delete(self, imageId, **kwargs):
         """

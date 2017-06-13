@@ -8,7 +8,7 @@ class MachineManager(BaseManager):
         machine.referenceId = data['id']
 
     def get_machine_model(self, machine, disks=None):
-        size = self.models.size.get(machine.sizeId)
+        size = machine.size
         data_disks = list()
         data_nics = list()
 
@@ -19,7 +19,7 @@ class MachineManager(BaseManager):
                               })
 
         if disks is None:
-            disks = [self.models.disk.get(diskid) for diskid in machine.disks]
+            disks = [machine.disks]
         for disk in disks:
             clusterId, volId = disk.referenceId.split(':')
             data_disks.append({'maxIOps': disk.iops,

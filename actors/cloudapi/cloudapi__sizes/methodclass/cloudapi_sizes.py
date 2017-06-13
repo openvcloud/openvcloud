@@ -1,5 +1,5 @@
-from js9 import j
 from cloudbroker.actorlib.baseactor import BaseActor
+
 
 class cloudapi_sizes(BaseActor):
     """
@@ -14,11 +14,14 @@ class cloudapi_sizes(BaseActor):
         :param cloudspaceId: id of the cloudspace
         :return list of flavors contains id CU and disksize for every flavor on the cloudspace
         """
-        cloudspaceId = int(cloudspaceId)
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        fields = ['id', 'name', 'vcpus', 'memory', 'description', 'CU', 'disks']
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
+        fields = ['id', 'name', 'vcpus', 'memory', 'description', 'disks']
+        qkwargs = {
+            'locations': cloudspace.location
+        }
         if cloudspace.allowedVMSizes:
-            results = self.models.size.search({'$fields': fields, 'gids': cloudspace.gid, 'id': {'$in': cloudspace.allowedVMSizes}})[1:]
-        else:
-            results = self.models.size.search({'$fields': fields, 'gids': cloudspace.gid})[1:]
-        return results
+            qkwargs['id__in'] = cloudspace.allowedVMSizes
+        sizes = []
+        for size in self.models.Size.objects(**qkwargs).only(*fields):
+            sizes.append(size.to_dict())
+        return sizes

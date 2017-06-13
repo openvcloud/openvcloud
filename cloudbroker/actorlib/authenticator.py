@@ -14,9 +14,8 @@ class auth(object):
         self.level = level
         self.models = models
 
-    def getAccountAcl(self, accountId):
+    def getAccountAcl(self, account):
         result = dict()
-        account = self.models.Account.get(accountId)
         if account.status in ['DESTROYED', 'DESTROYING']:
             return result
         for ace in account.acl:
@@ -26,9 +25,8 @@ class auth(object):
                 result[ace.userGroupId] = ace_dict
         return result
 
-    def getCloudspaceAcl(self, cloudspaceId):
+    def getCloudspaceAcl(self, cloudspace):
         result = dict()
-        cloudspace = self.models.Cloudspace.get(cloudspaceId)
         if cloudspace.status in ['DESTROYED', 'DESTROYING']:
             return result
         for ace in cloudspace.acl:
@@ -37,7 +35,7 @@ class auth(object):
                                 right=set(ace.right), type='U', canBeDeleted=True, status=ace.status)
                 result[ace.userGroupId] = ace_dict
 
-        for user_id, ace in self.getAccountAcl(cloudspace.accountId).items():
+        for user_id, ace in self.getAccountAcl(cloudspace.account).items():
             if user_id in result:
                 result[user_id]['canBeDeleted'] = False
                 result[user_id]['right'].update(ace['right'])
@@ -47,9 +45,8 @@ class auth(object):
                 result[user_id] = ace
         return result
 
-    def getVMachineAcl(self, machineId):
+    def getVMachineAcl(self, machine):
         result = dict()
-        machine = self.models.VMachine.get(machineId)
 
         for ace in machine.acl:
             if ace.type == 'U':
@@ -133,9 +130,7 @@ class auth(object):
 
             ctx.env['beaker.session']['tags'] = str(tags)
             if self.isAuthorized(user, account, cloudspace, machine):
-                import ipdb
-                with ipdb.launch_ipdb_on_exception():
-                    return func(*args, **kwargs)
+                return func(*args, **kwargs)
             else:
                 raise exceptions.Forbidden(
                     '''User: "%s" isn't allowed to execute this action.

@@ -228,7 +228,7 @@ class cloudbroker_cloudspace(BaseActor):
         :param allowedVMSizes: alowed sizes for a cloudspace
         :return: True if update was successful
         """
-        if self.syscl.User.objects(name=access).count() == 0:
+        if self.systemodel.User.objects(name=access).count() == 0:
             raise exceptions.NotFound('Username "%s" not found' % access)
 
         resourcelimits = {'CU_M': maxMemoryCapacity,

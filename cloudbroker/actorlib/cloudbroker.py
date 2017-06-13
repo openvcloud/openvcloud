@@ -6,12 +6,13 @@ from .netmgr import NetManager
 import netaddr
 import uuid
 import random
-import time
 import string
+import mongolock
 import re
 import json
 
 models = j.portal.tools.models.cloudbroker
+MACHINE_INVALID_STATES = ['ERROR', 'DESTROYED', 'DESTROYING']
 
 
 def removeConfusingChars(input):
@@ -33,24 +34,19 @@ class CloudBroker(object):
     def actors(self):
         return j.apps
 
-    def markProvider(self, stackId, eco):
-        stack = models.stack.get(stackId)
+    def markProvider(self, stack, eco):
         stack.error += 1
         if stack.error >= 2:
             stack.status = 'ERROR'
             stack.eco = eco.guid
-        models.stack.set(stack)
+        stack.save()
 
-    def clearProvider(self, stackId):
-        stack = models.stack.get(stackId)
-        stack.error = 0
-        stack.eco = None
-        stack.status = 'ENABLED'
-        models.stack.set(stack)
+    def clearProvider(self, stack):
+        stack.modify(eco=None, error=0, status='ENABLED')
 
-    def getBestStack(self, location, imageId=None, excludelist=[]):
+    def getBestStack(self, location, image=None, excludelist=[]):
         client = getGridClient(location, models)
-        capacityinfo = self.getCapacityInfo(location, client, imageId)
+        capacityinfo = self.getCapacityInfo(location, client, image)
         if not capacityinfo:
             return -1
         capacityinfo = [node for node in capacityinfo if node['id'] not in excludelist]
@@ -73,11 +69,11 @@ class CloudBroker(object):
         models.vmachine.set(machine)
         return True
 
-    def getCapacityInfo(self, location, client, imageId=None):
+    def getCapacityInfo(self, location, client, image=None):
         resourcesdata = list()
         activenodes = [node['id'] for node in client.getActiveNodes()]
-        if imageId:
-            stacks = models.Stack.objects(images=imageId, location=location)
+        if image:
+            stacks = models.Stack.objects(images=image, location=location)
         else:
             stacks = models.Stack.objects(location=location)
         for stack in stacks:
@@ -85,7 +81,7 @@ class CloudBroker(object):
                 if stack.referenceId not in activenodes:
                     continue
                 # search for all vms running on the stacks
-                usedvms = models.VMachine.objects(stack=stack, status__nin=['HALTED', 'ERROR', 'DESTROYED'])
+                usedvms = models.VMachine.objects(stack=stack, status__nin=MACHINE_INVALID_STATES)
                 if usedvms:
                     stack.usedmemory = sum(vm.size.memory for vm in usedvms)
                 else:
@@ -131,13 +127,10 @@ class CloudBroker(object):
         networkids = models.NetworkIds.objects(location=location).first()
         if not networkids:
             raise exceptions.ServiceUnavailable("No networkids configured for location")
-        collection = networkids._get_collection()
         for netid in networkids.freeNetworkIds:
-            res = collection.update_one({'_id': networkids.id},
-                                        {'$pull': {'freeNetworkIds': netid}})
-            if res.modified_count == 1:
-                collection.update_one({'_id': networkids.id},
-                                      {'$push': {'usedNetworkIds': netid}})
+            res = networkids.update(full_result=True, pull__freeNetworkIds=netid)
+            if res['nModified'] == 1:
+                networkids.update(push__usedNetworkIds=netid)
                 return netid
 
     def releaseNetworkId(self, location, networkid, **kwargs):
@@ -146,10 +139,10 @@ class CloudBroker(object):
         param:networkid int representing the netowrkid to release
         result bool
         """
-        collection = models.NetworkIds._get_collection()
-        collection.update_one({'location': location.id},
-                              {'$pull': {'usedNetworkIds': networkid},
-                               '$addToSet': {'freeNetworkIds': networkid}})
+        networkids = models.NetworkIds.objects(location=location).first()
+        if not networkids:
+            raise exceptions.ServiceUnavailable("No networkids configured for location")
+        networkids.update(pull__userNetworkIds=networkid, push__freeNetworkIds=networkid)
         return True
 
     def checkUser(self, username, activeonly=True):
@@ -300,91 +293,94 @@ class Machine(object):
             pass
 
     def validateCreate(self, cloudspace, name, sizeId, imageId, disksize, datadisks):
-        self.assertName(cloudspace.id, name)
+        self.assertName(cloudspace, name)
         if not disksize:
             raise exceptions.BadRequest("Invalid disksize %s" % disksize)
 
         for datadisksize in datadisks:
-            if datadisksize > 2000:
+            if datadisksize > 2000000:
                 raise exceptions.BadRequest("Invalid data disk size {}GB max size is 2000GB".format(datadisksize))
 
         if cloudspace.status == 'DESTROYED':
             raise exceptions.BadRequest('Can not create machine on destroyed Cloud Space')
 
-        image = models.image.get(imageId)
+        image = models.Image.get(imageId)
         if disksize < image.size:
             raise exceptions.BadRequest(
                 "Disk size of {}GB is to small for image {}, which requires at least {}GB.".format(disksize, image.name, image.size))
-        if image.status != "CREATED":
+        if image.status != "ENABLED":
             raise exceptions.BadRequest("Image {} is disabled.".format(imageId))
 
-        if models.vmachine.count({'status': {'$ne': 'DESTROYED'}, 'cloudspaceId': cloudspace.id}) >= 250:
+        if models.VMachine.objects(status__ne='DESTROYED', cloudspace=cloudspace.id).count() >= 250:
             raise exceptions.BadRequest("Can not create more than 250 Virtual Machines per Cloud Space")
 
         sizes = j.apps.cloudapi.sizes.list(cloudspace.id)
         if sizeId not in [s['id'] for s in sizes]:
             raise exceptions.BadRequest("Cannot create machine with specified size on this cloudspace")
 
-        size = models.size.get(sizeId)
+        size = models.Size.get(sizeId)
         if disksize not in size.disks:
             raise exceptions.BadRequest("Disk size of {}GB is invalid for sizeId {}.".format(disksize, sizeId))
+        return size, image
 
-    def assertName(self, cloudspaceId, name):
+    def assertName(self, cloudspace, name):
         if not name or not name.strip():
             raise ValueError("Machine name can not be empty")
-        results = models.vmachine.search({'cloudspaceId': cloudspaceId, 'name': name,
-                                          'status': {'$nin': ['DESTROYED', 'ERROR']}})[1:]
-        if results:
+        if models.VMachine.objects(cloudspace=cloudspace.id, status__nin=MACHINE_INVALID_STATES, name=name).count() > 0:
             raise exceptions.Conflict('Selected name already exists')
 
-    def getFreeMacAddress(self, gid, **kwargs):
+    def getFreeMacAddress(self, location, **kwargs):
         """
         Get a free macaddres in this environment
         result
         """
-        mac = models.macaddress.set(key=gid, obj=1)
+        mac = models.Macaddress.objects(location=location).modify(location=location, inc__count=1)
+        if not mac:
+            count = 0
+        else:
+            count = mac.count
         firstmac = netaddr.EUI('52:54:00:00:00:00')
-        newmac = int(firstmac) + mac
+        newmac = int(firstmac) + count
         macaddr = netaddr.EUI(newmac)
         macaddr.dialect = netaddr.mac_eui48
         return str(macaddr).replace('-', ':').lower()
 
-    def createModel(self, name, description, cloudspace, imageId, sizeId, disksize, datadisks):
+    def createModel(self, name, description, cloudspace, image, size, disksize, datadisks):
         datadisks = datadisks or []
+        hostName = self.make_hostname(name)
 
-        image = models.image.get(imageId)
-        machine = models.vmachine.new()
-        machine.cloudspaceId = cloudspace.id
-        machine.descr = description
-        machine.name = name
-        machine.status = 'HALTED'
-        machine.sizeId = sizeId
-        machine.imageId = imageId
-        machine.creationTime = int(time.time())
-        machine.updateTime = int(time.time())
-        machine.type = 'VIRTUAL'
+        machine = models.VMachine(
+            name=name,
+            cloudspace=cloudspace,
+            description=description,
+            status='HALTED',
+            size=size,
+            hostName=hostName,
+            image=image,
+            type='VIRTUAL'
+        )
 
         def addDisk(order, size, type, name=None):
-            disk = models.disk.new()
-            disk.name = name or 'Disk nr %s' % order
-            disk.descr = 'Machine disk of type %s' % type
-            disk.sizeMax = size
-            disk.iops = 2000
-            disk.accountId = cloudspace.accountId
-            disk.gid = cloudspace.gid
-            disk.order = order
-            disk.type = type
-            diskid = models.disk.set(disk)[0]
-            machine.disks.append(diskid)
-            return diskid
+            disk = models.Disk(
+                name=name or 'Disk nr %s' % order,
+                description='Machine disk fo type %s' % type,
+                size=size,
+                iops=2000,
+                account=cloudspace.account,
+                location=cloudspace.location,
+                type=type
+            )
+            disk.save()
+            machine.disks.append(disk)
+            return disk
 
-        addDisk(-1, disksize, 'B', 'Boot disk')
+        addDisk(-1, disksize, 'BOOT', 'Boot disk')
         diskinfo = []
         for order, datadisksize in enumerate(datadisks):
             diskid = addDisk(order, int(datadisksize), 'D')
             diskinfo.append((diskid, int(datadisksize)))
 
-        account = machine.new_account()
+        account = models.VMAccount()
         if hasattr(image, 'username') and image.username:
             account.login = image.username
         elif image.type != 'Custom Templates':
@@ -398,60 +394,65 @@ class Machine(object):
 
         if not account.password:
             length = 6
-            chars = removeConfusingChars(string.letters + string.digits)
+            chars = removeConfusingChars(string.ascii_letters + string.digits)
             letters = [removeConfusingChars(string.ascii_lowercase), removeConfusingChars(string.ascii_uppercase)]
             passwd = ''.join(random.choice(chars) for _ in range(length))
             passwd = passwd + random.choice(string.digits) + random.choice(letters[0]) + random.choice(letters[1])
             account.password = passwd
-        machine.id = models.vmachine.set(machine)[0]
 
-        nic = machine.new_nic()
-        nic.macAddress = self.getFreeMacAddress(cloudspace.gid)
-        nic.deviceName = 'vm-{}-{:04x}'.format(machine.id, cloudspace.networkId)
-        nic.networkId = cloudspace.networkId
-        nic.type = 'vxlan'
-        with models.cloudspace.lock(cloudspace.id):
+        machine.accounts.append(account)
+
+        nic = models.Nic(
+            macAddress=self.getFreeMacAddress(cloudspace.location),
+            deviceName='vm-{}-{:04x}'.format(machine.id, cloudspace.networkId),
+            networkId=cloudspace.networkId,
+            type='vxlan'
+        )
+        lock = mongolock.MongoLock(client=models.Cloudspace._get_collection().database.client)
+        with lock(str(cloudspace.id), 'getFreeIPAddress', expire=60, timeout=10):
             nic.ipAddress = self.cb.netmgr.getFreeIPAddress(cloudspace)
-            machine.id = models.vmachine.set(machine)[0]
+            machine.nics.append(nic)
+            machine.save()
 
         return machine
 
-    def _getBestClient(self, machine, gid, newstackId, excludelist, imageId=None):
+    def _getBestClient(self, machine, location, newstackId, excludelist, image=None):
         client = None
         if not newstackId:
-            stack = self.cb.getBestStack(gid, imageId, excludelist)
+            stack = self.cb.getBestStack(location, image, excludelist)
             if stack == -1:
                 raise exceptions.ServiceUnavailable(
                     'Not enough resources available to provision the requested machine')
-            client = getGridClient(stack['gid'], models)
+            client = getGridClient(location, models)
         else:
-            stack = models.stack.get(newstackId).dump()
-            client = getGridClient(stack['gid'], models)
+            stack = models.Stack.get(newstackId)
+            client = getGridClient(stack.location, models)
             activenodes = [node['id']for node in client.getActiveNodes()]
             if stack['referenceId'] not in activenodes:
                 raise exceptions.ServiceUnavailable(
                     'Not enough resources available to provision the requested machine')
         return stack, client
 
-    def create(self, machine, cloudspace, imageId, stackId):
+    def make_hostname(self, name):
+        name = name.strip().lower()
+        return re.sub('[^a-z0-9-]', '', name)[:63] or 'vm'
+
+    def create(self, machine, cloudspace, image, stackId):
         excludelist = []
         newstackId = stackId
-        machine.hostName = 'vm-{}'.format(machine.id)
         while True:
             disks = []
-            stack, client = self._getBestClient(machine, cloudspace.gid, newstackId, excludelist, imageId)
-            machine.stackId = stack['id']
+            stack, client = self._getBestClient(machine, cloudspace.location, newstackId, excludelist, image)
+            machine.stack = stack
 
-            if imageId not in stack['images']:
+            if image not in stack.images:
                 self.cleanup(machine)
                 raise exceptions.BadRequest("Image is not available on requested stack")
-            image = models.image.get(imageId)
 
             try:
-                for diskId in machine.disks:
-                    disk = models.disk.get(diskId)
+                for disk in machine.disks:
                     disks.append(disk)
-                    if disk.type == 'B':
+                    if disk.type == 'BOOT':
                         client.storage.createVolume(disk, image)
                     else:
                         client.storage.createVolume(disk)
@@ -460,29 +461,27 @@ class Machine(object):
                 self.cleanup(machine)
                 raise exceptions.ServiceUnavailable('Not enough storage resources available to provision the requested machine')
             try:
-                models.vmachine.set(machine)
-                client.machine.create(machine, disks, stack['referenceId'])
+                machine.save()
+                client.machine.create(machine, disks, stack.referenceId)
                 break
             except Exception as e:
                 eco = j.errorhandler.processPythonExceptionObject(e)
-                self.cb.markProvider(stack['id'], eco)
+                self.cb.markProvider(stack, eco)
                 newstackId = 0
-                models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
+                machine.modify(status='ERROR')
                 if stackId:
                     self.cleanup(machine)
                     raise exceptions.ServiceUnavailable('Not enough cpu resources available to provision the requested machine')
                 else:
                     excludelist.append(stack['id'])
                     newstackId = 0
-        self.cb.clearProvider(stack['id'])
-        models.vmachine.updateSearch({'id': machine.id},
-                                     {'$set': {'stackId': stack['id'],
-                                               'status': 'RUNNING'}})
+        self.cb.clearProvider(stack)
+        machine.modify(stack=stack, status='RUNNING')
         return machine.id
 
     def get_cloudinit_data(self, machine):
-        image = models.image.get(machine['imageId'])
-        hostname = 'vm-{}'.format(machine['id'])
+        image = machine.image
+        hostname = machine.hostName
         userdata = {}
         if image.type.lower().strip() != 'windows':
             userdata = {'users': [],
@@ -490,16 +489,16 @@ class Machine(object):
                         'ssh_pwauth': True,
                         'manage_etc_hosts': True,
                         'chpasswd': {'expire': False}}
-            for account in machine['accounts']:
-                userdata['users'].append({'name': account['login'],
-                                          'plain_text_passwd': account['password'],
+            for account in machine.accounts:
+                userdata['users'].append({'name': account.login,
+                                          'plain_text_passwd': account.password,
                                           'lock-passwd': False,
                                           'shell': '/bin/bash',
                                           'sudo': 'ALL=(ALL) ALL'})
             metadata = {'local-hostname': hostname}
         else:
-            admin = machine['accounts'][0]
-            metadata = {'admin_pass': admin['password'], 'hostname': hostname}
+            admin = machine.accounts[0]
+            metadata = {'admin_pass': admin.password, 'hostname': hostname}
         return {'userdata': json.dumps(userdata), 'metadata': json.dumps(metadata)}
 
     def start(self, machine, stackId=None):

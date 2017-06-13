@@ -30,7 +30,7 @@ class cloudapi_users(BaseActor):
         if accounts:
             status = accounts[0].get('status', 'CONFIRMED')
             if j.core.portal.active.auth.authenticate(username, password):
-                session = ctx.env['beaker.session'] # get session
+                session = ctx.env['beaker.session']
                 session['user'] = username
                 session['account_status'] = status
                 session.save()
@@ -40,7 +40,6 @@ class cloudapi_users(BaseActor):
                 return session.id
         ctx.start_response('401 Unauthorized', [])
         return 'Unauthorized'
-
 
     def get(self, username, **kwargs):
         """
@@ -54,17 +53,16 @@ class cloudapi_users(BaseActor):
             ctx.start_response('403 Forbidden', [])
             return 'Forbidden'
 
-        user = j.core.portal.active.auth.getUserInfo(username)
+        user = j.portal.tools.server.active.auth.getUserInfo(username)
         if user:
             try:
                 data = json.loads(user.data)
             except:
                 data = {}
-            return {'username':user.id, 'emailaddresses': user.emails, 'data': data}
+            return {'username': user.name, 'emailaddresses': user.emails, 'data': data}
         else:
             ctx.start_response('404 Not Found', [])
             return 'User not found'
-
 
     def setData(self, data, **kwargs):
         """
@@ -78,24 +76,23 @@ class cloudapi_users(BaseActor):
             ctx.start_response('403 Forbidden', [])
             return 'Forbidden'
 
-        user = j.core.portal.active.auth.getUserInfo(username)
+        user = self.systemodel.User.objects(name=username).first()
         if user:
             try:
                 userdata = json.loads(user.data)
             except:
                 userdata = {}
             userdata.update(data)
-            user.data = json.dumps(userdata)
-            self.systemodel.user.set(user)
+            user.modify(data=json.dumps(userdata))
             return True
         else:
             ctx.start_response('404 Not Found', [])
             return 'User not found'
 
     def _isValidPassword(self, password):
-        if len(password) < 8 or len (password) > 80:
+        if len(password) < 8 or len(password) > 80:
             return False
-        return re.search(r"\s",password) is None
+        return re.search(r"\s", password) is None
 
     def updatePassword(self, oldPassword, newPassword, **kwargs):
         """
@@ -105,15 +102,15 @@ class cloudapi_users(BaseActor):
         ctx = kwargs['ctx']
         user = j.core.portal.active.auth.getUserInfo(ctx.env['beaker.session']['user'])
         if user:
-              if user.passwd == j.tools.hash.md5_string(oldPassword):
-                 if not self._isValidPassword(newPassword):
+            if user.passwd == j.tools.hash.md5_string(oldPassword):
+                if not self._isValidPassword(newPassword):
                     return [400, "A password must be at least 8 and maximum 80 characters long and may not contain whitespace."]
-                 else:
+                else:
                     user.passwd = j.tools.hash.md5_string(newPassword)
                     self.systemodel.user.set(user)
                     return [200, "Your password has been changed."]
-              else:
-                 return [400, "Your current password doesn't match."]
+            else:
+                return [400, "Your current password doesn't match."]
         else:
             ctx = kwargs['ctx']
             ctx.start_response('404 Not Found', [])
@@ -146,7 +143,7 @@ class cloudapi_users(BaseActor):
         """
         ctx = kwargs['ctx']
 
-        existingusers = self.systemodel.user.search({'emails':emailaddress})[1:]
+        existingusers = self.systemodel.user.search({'emails': emailaddress})[1:]
 
         if (len(existingusers) == 0):
             ctx.start_response('404 Not Found', [])
@@ -154,7 +151,7 @@ class cloudapi_users(BaseActor):
 
         user = existingusers[0]
         locationurl = j.apps.cloudapi.locations.getUrl()
-        #create reset token
+        # create reset token
         actual_token = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(64))
         reset_token = self.models.resetpasswordtoken.new()
         reset_token.id = actual_token
@@ -163,7 +160,7 @@ class cloudapi_users(BaseActor):
         reset_token.userguid = user['guid']
         self.models.resetpasswordtoken.set(reset_token)
 
-        self._sendResetPasswordMail(emailaddress,user['id'],actual_token,locationurl)
+        self._sendResetPasswordMail(emailaddress, user['id'], actual_token, locationurl)
 
         return 'Reset password email send'
 
@@ -186,7 +183,7 @@ class cloudapi_users(BaseActor):
             ctx.start_response('419 Authentication Expired', [])
             return 'Invalid or expired validation token'
 
-        return {'username':actual_reset_token.username}
+        return {'username': actual_reset_token.username}
 
     def resetPassword(self, resettoken, newpassword, **kwargs):
         """
@@ -263,7 +260,7 @@ class cloudapi_users(BaseActor):
             def userinfo(user):
                 emailhash = j.tools.hash.md5_string(next(iter(user['emails']), ''))
                 return {'username': user['id'],
-                        'gravatarurl': 'http://www.gravatar.com/avatar/%s' % emailhash }
+                        'gravatarurl': 'http://www.gravatar.com/avatar/%s' % emailhash}
             return map(userinfo, matchingusers)
         else:
             return []
@@ -391,9 +388,9 @@ class cloudapi_users(BaseActor):
             args.update(extratemplateargs)
 
         subject = j.core.portal.active.templates.render(
-                'cloudbroker/email/users/%s.subject.txt' % templatename, **args)
+            'cloudbroker/email/users/%s.subject.txt' % templatename, **args)
         body = j.core.portal.active.templates.render(
-                'cloudbroker/email/users/%s.html' % templatename, **args)
+            'cloudbroker/email/users/%s.html' % templatename, **args)
 
         j.clients.email.send(toaddrs, fromaddr, subject, body)
 

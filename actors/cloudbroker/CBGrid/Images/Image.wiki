@@ -1,8 +1,8 @@
 @usedefault
-@@title Image: ${name}
+@@title Image: ${image.name}
 {{image_data}}
-{% if id %}
-h3. Image: ${name}
+{% if image %}
+h3. Image: ${image.name}
 
 {{actions:
 - display: Image Availability
@@ -25,8 +25,8 @@ h3. Image: ${name}
   - reason
   action: /restmachine/cloudbroker/image/enable
   hideon:
-  - CREATED
-  hideonInput: ${status}
+  - ENABLED
+  hideonInput: ${image.status}
   data:
    imageId: $$id
 
@@ -36,7 +36,7 @@ h3. Image: ${name}
   action: /restmachine/cloudbroker/image/disable
   hideon:
   - DISABLED
-  hideonInput: ${status}
+  hideonInput: ${image.status}
   data:
    imageId: $$id
 
@@ -51,11 +51,11 @@ h3. Image: ${name}
 
 {{image_update_cpu_nodes: imageId:$$id}}
 
-* *Description*:${description}
-* *Type*:       ${type}
-* *Size*:       ${size}
-* *Status*:     ${status or "CREATED"}
-* *ReferenceId*:${referenceId}
+* *Description*:${image.description}
+* *Type*:       ${image.type}
+* *Size*:       ${image.size}
+* *Status*:     ${image.status or "CREATED"}
+* *ReferenceId*:${image.referenceId}
 
 h4. Stacks which have this Image
 

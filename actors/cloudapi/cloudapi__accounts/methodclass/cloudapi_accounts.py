@@ -126,10 +126,10 @@ class cloudapi_accounts(BaseActor):
         :param accountId: id of the account
         :return dict with the account details
         """
-        account = self.models.account.get(int(accountId)).dump()
+        account = self.models.Account.get(accountId).to_dict()
 
         # Filter the acl (after removing the selected user) to only have admins
-        admins = filter(lambda a: set(a['right']) == set('ARCXDU'), account['acl'])
+        admins = list(filter(lambda a: set(a['right']) == set('ARCXDU'), account['acl']))
         # Set canBeDeleted to True except for the last admin on the account (if more than 1 admin
         # on account then all can be deleted)
         for ace in account['acl']:
@@ -198,8 +198,17 @@ class cloudapi_accounts(BaseActor):
         user = ctx.env['beaker.session']['user']
         fields = ['id', 'name', 'acl', 'creationTime', 'updateTime']
         q = {'acl.userGroupId': user, 'status': {'$in': ['DISABLED', 'CONFIRMED']}}
-        query = {'$query': q, '$fields': fields}
-        accounts = self.models.account.search(query)[1:]
+        accounts = []
+        for account in self.models.Account.find(q).only(*fields):
+            accountdict = account.to_dict()
+            accounts.append({
+                'id': str(account.id),
+                'name': account.name,
+                'acl': accountdict['acl'],
+                'creationTime': account.creationTime,
+                'updateTime': account.updateTime
+            })
+
         return accounts
 
     @authenticator.auth(acl={'account': set('A')})
@@ -236,7 +245,7 @@ class cloudapi_accounts(BaseActor):
             reservedcloudunits = self.getReservedCloudUnits(accountId)
 
         if maxMemoryCapacity is not None:
-            consumedmemcapacity = self.getConsumedCloudUnitsByType(accountId, 'CU_M')
+            consumedmemcapacity = self._getConsumedCloudUnitsByType(accountobj, 'CU_M')
             if maxMemoryCapacity != -1 and maxMemoryCapacity < consumedmemcapacity:
                 raise exceptions.BadRequest("Cannot set the maximum memory capacity to a value "
                                             "that is less than the current consumed memory "
@@ -250,7 +259,7 @@ class cloudapi_accounts(BaseActor):
                 accountobj.resourceLimits['CU_M'] = maxMemoryCapacity
 
         if maxVDiskCapacity is not None:
-            consumedvdiskcapacity = self.getConsumedCloudUnitsByType(accountId, 'CU_D')
+            consumedvdiskcapacity = self._getConsumedCloudUnitsByType(accountobj, 'CU_D')
             if maxVDiskCapacity != -1 and maxVDiskCapacity < consumedvdiskcapacity:
                 raise exceptions.BadRequest("Cannot set the maximum vdisk capacity to a value that "
                                             "is less than the current consumed vdisk capacity %s "
@@ -264,7 +273,7 @@ class cloudapi_accounts(BaseActor):
                 accountobj.resourceLimits['CU_D'] = maxVDiskCapacity
 
         if maxCPUCapacity is not None:
-            consumedcpucapacity = self.getConsumedCloudUnitsByType(accountId, 'CU_C')
+            consumedcpucapacity = self._getConsumedCloudUnitsByType(accountobj, 'CU_C')
             if maxCPUCapacity != -1 and maxCPUCapacity < consumedcpucapacity:
                 raise exceptions.BadRequest("Cannot set the maximum cpu cores to a value that "
                                             "is less than the current consumed cores %s "
@@ -278,7 +287,7 @@ class cloudapi_accounts(BaseActor):
                 accountobj.resourceLimits['CU_C'] = maxCPUCapacity
 
         if maxNetworkPeerTransfer is not None:
-            transferednewtpeer = self.getConsumedCloudUnitsByType(accountId, 'CU_NP')
+            transferednewtpeer = self._getConsumedCloudUnitsByType(accountobj, 'CU_NP')
             if maxNetworkPeerTransfer != -1 and maxNetworkPeerTransfer < transferednewtpeer:
                 raise exceptions.BadRequest("Cannot set the maximum network transfer peering "
                                             "to a value that is less than the current  "
@@ -292,7 +301,7 @@ class cloudapi_accounts(BaseActor):
                 accountobj.resourceLimits['CU_NP'] = maxNetworkPeerTransfer
 
         if maxNumPublicIP is not None:
-            assingedpublicip = self.getConsumedCloudUnitsByType(accountId, 'CU_I')
+            assingedpublicip = self._getConsumedCloudUnitsByType(accountobj, 'CU_I')
             if maxNumPublicIP != -1 and maxNumPublicIP < assingedpublicip:
                 raise exceptions.BadRequest("Cannot set the maximum number of public IPs "
                                             "to a value that is less than the current "
@@ -309,17 +318,15 @@ class cloudapi_accounts(BaseActor):
         return True
 
     # Unexposed actor
-    def getConsumedVDiskCapacity(self, accountId):
+    def getConsumedVDiskCapacity(self, account):
         """
         Calculate the total consumed disk storage in the account in GB
 
         :param accountId: id of the accountId that should be checked
         :return: the total consumed disk storage
         """
-        disks = self.models.disk.search(
-            {'$query': {'accountId': accountId, 'status': {'$ne': 'DESTROYED'}},
-             '$fields': ['sizeMax']}, size=0)[1:]
-        consumeddiskcapacity = sum([d['sizeMax'] for d in disks])
+        disks = self.models.Disk.objects(account=account.id).only('size')
+        consumeddiskcapacity = sum([d['size'] for d in disks])
         return consumeddiskcapacity
 
     @authenticator.auth(acl={'account': set('R')})
@@ -345,13 +352,10 @@ class cloudapi_accounts(BaseActor):
         # consumption is properly calculated
         unimplementedcu = {'CU_S': 0, 'CU_A': 0, 'CU_NO': 0, 'CU_NP': 0}
 
-        cloudspaces = self.models.cloudspace.search({'@fields': ['id'], '$query': {'accountId': accountId}})[1:]
-        deployedcloudspaces = self.models.cloudspace.search({'@fields': ['id'], '$query': {'accountId': accountId,
-                                                                                           'status': 'DEPLOYED'}})[1:]
-        cloudspacesIds = [x['id'] for x in cloudspaces]
-        deployedcloudspacesIds = [x['id'] for x in deployedcloudspaces]
+        cloudspaces = self.models.Cloudspace.objects(account=accountId).only('id', 'status')
+        deployedcloudspaces = list(filter(lambda sp: sp.status == 'DEPLOYED', cloudspaces))
         consumedcudict = j.apps.cloudapi.cloudspaces.getConsumedCloudUnitsInCloudspaces(
-            cloudspacesIds, deployedcloudspacesIds)
+            cloudspaces, deployedcloudspaces)
 
         consumedcudict.update(unimplementedcu)
         # Calculate disks on account level so as not to miss unattached disks
@@ -360,6 +364,12 @@ class cloudapi_accounts(BaseActor):
 
     @authenticator.auth(acl={'account': set('R')})
     def getConsumedCloudUnitsByType(self, accountId, cutype, **kwargs):
+        account = self.models.Account.get(accountId)
+        if not account:
+            raise exceptions.NotFound("Account with id %s does not exists".format(accountId))
+        return self._getConsumedCloudUnitsByType(account, cutype, **kwargs)
+
+    def _getConsumedCloudUnitsByType(self, account, cutype, **kwargs):
         """
         Calculate the currently consumed cloud units of the specified type for all cloudspaces
         in the account.
@@ -378,25 +388,23 @@ class cloudapi_accounts(BaseActor):
         """
         consumedamount = 0
         # get all cloudspaces in this account
-        cloudspaces = self.models.cloudspace.search({'@fields': ['id'], '$query': {'accountId': accountId}})[1:]
-        cloudspacesIds = [x['id'] for x in cloudspaces]
+        cloudspaces = self.models.Cloudspace.objects(account=account.id).only('id')
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace__in=cloudspaces).only('id', 'size')
 
         # For the following cloud unit types 'CU_S', 'CU_A', 'CU_NO', 'CU_NP', 0 will be returned
         # until proper consumption calculation is implemented
         if cutype == 'CU_M':
-            consumedamount = j.apps.cloudapi.cloudspaces.getConsumedMemoryInCloudspaces(cloudspacesIds)
+            consumedamount = j.apps.cloudapi.cloudspaces.getConsumedMemoryInCloudspaces(machines)
         elif cutype == 'CU_C':
-            consumedamount = j.apps.cloudapi.cloudspaces.getConsumedCPUCoresInCloudspaces(cloudspacesIds)
+            consumedamount = j.apps.cloudapi.cloudspaces.getConsumedCPUCoresInCloudspaces(machines)
         elif cutype == 'CU_D':
-            consumedamount = self.getConsumedVDiskCapacity(accountId)
+            consumedamount = self.getConsumedVDiskCapacity(account)
         elif cutype == 'CU_NP':
             return 0
         elif cutype == 'CU_I':
             # for calculating consumed ips we should consider only deployed cloudspaces
-            deployedcloudspaces = self.models.cloudspace.search({'$fields': ['id'], '$query': {'accountId': accountId,
-                                                                                               'status': 'DEPLOYED'}})[1:]
-            deployedcloudspacesIds = [x['id'] for x in deployedcloudspaces]
-            consumedamount = j.apps.cloudapi.cloudspaces.getConsumedPublicIPsInCloudspaces(deployedcloudspacesIds)
+            deployedcloudspaces = self.models.Cloudspace.objects(account=account.id, status='DEPLOYED').only('id')
+            consumedamount = j.apps.cloudapi.cloudspaces.getConsumedPublicIPsInCloudspaces(deployedcloudspaces)
         else:
             raise exceptions.BadRequest('Invalid cloud unit type: %s' % cutype)
 
@@ -438,7 +446,7 @@ class cloudapi_accounts(BaseActor):
         return reservedcudict
 
     # Unexposed actor
-    def checkAvailablePublicIPs(self, accountId, numips=1):
+    def checkAvailablePublicIPs(self, account, numips=1):
         """
         Check that the required number of ip addresses are available in the given account
 
@@ -447,12 +455,12 @@ class cloudapi_accounts(BaseActor):
         :return: True if check succeeds, otherwise raise a 400 BadRequest error
         """
         # Validate that there still remains enough public IP addresses to assign in account
-        resourcelimits = self.models.account.get(accountId).resourceLimits
+        resourcelimits = account.resourceLimits
         if 'CU_I' in resourcelimits:
             reservedcus = resourcelimits['CU_I']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedCloudUnitsByType(accountId, 'CU_I')
+                consumedcus = self._getConsumedCloudUnitsByType(account, 'CU_I')
                 availablecus = reservedcus - consumedcus
                 if availablecus < numips:
                     raise exceptions.BadRequest("Required actions will consume an extra %s public IP(s),"
@@ -461,7 +469,7 @@ class cloudapi_accounts(BaseActor):
         return True
 
     # Unexposed actor
-    def checkAvailableMachineResources(self, accountId, numcpus=0, memorysize=0, vdisksize=0):
+    def checkAvailableMachineResources(self, account, numcpus=0, memorysize=0, vdisksize=0):
         """
         Check that the required machine resources are available in the given account
 
@@ -471,7 +479,6 @@ class cloudapi_accounts(BaseActor):
         :param vdisksize: the required vdisk size in GB that need to be free
         :return: True if check succeeds, otherwise raise a 400 BadRequest error
         """
-        account = self.models.account.get(accountId)
         resourcelimits = account.resourceLimits
 
         # Validate that there still remains enough cpu cores to assign in account
@@ -479,7 +486,7 @@ class cloudapi_accounts(BaseActor):
             reservedcus = account.resourceLimits['CU_C']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedCloudUnitsByType(accountId, 'CU_C')
+                consumedcus = self._getConsumedCloudUnitsByType(account, 'CU_C')
                 availablecus = reservedcus - consumedcus
                 if availablecus < numcpus:
                     raise exceptions.BadRequest("Required actions will consume an extra %s core(s),"
@@ -491,7 +498,7 @@ class cloudapi_accounts(BaseActor):
             reservedcus = account.resourceLimits['CU_M']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedCloudUnitsByType(accountId, 'CU_M')
+                consumedcus = self._getConsumedCloudUnitsByType(account, 'CU_M')
                 availablecus = reservedcus - consumedcus
                 if availablecus < memorysize:
                     raise exceptions.BadRequest("Required actions will consume an extra %s GB of "
@@ -503,7 +510,7 @@ class cloudapi_accounts(BaseActor):
             reservedcus = account.resourceLimits['CU_D']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedCloudUnitsByType(accountId, 'CU_D')
+                consumedcus = self._getConsumedCloudUnitsByType(account, 'CU_D')
                 availablecus = reservedcus - consumedcus
                 if availablecus < vdisksize:
                     raise exceptions.BadRequest("Required actions will consume an extra %s GB of "

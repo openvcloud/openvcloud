@@ -7,12 +7,9 @@ class Network(object):
         self.models = models
 
     def get_ip_from_pool(self, pool):
-        collection = pool._get_collection()
         for ip in pool.ips:
-
-            res = collection.update_one({'_id': pool['id']},
-                                        {'$pull': {'ips': ip}})
-            if res.modified_count == 1:
+            res = pool.update(full_result=True, pull__ips=ip)
+            if res['nModified'] == 1:
                 pool.reload()
                 return pool, netaddr.IPNetwork("%s/%s" % (ip, pool.subnetmask))
 

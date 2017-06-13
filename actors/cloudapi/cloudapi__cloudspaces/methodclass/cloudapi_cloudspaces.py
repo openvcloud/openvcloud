@@ -175,13 +175,15 @@ class cloudapi_cloudspaces(BaseActor):
         if not location:
             raise exceptions.BadRequest('Location %s does not exists' % location)
         if externalnetworkId:
-            externalnetwork = self.models.ExternNetwork.get(externalnetworkId)
+            externalnetwork = self.models.ExternalNetwork.get(externalnetworkId)
             if not externalnetwork:
                 raise exceptions.BadRequest('Could not find externalnetwork with id %s' % externalnetworkId)
             if externalnetwork.account and externalnetwork.account.id != account.id:
                 raise exceptions.BadRequest('ExternalNetwork belongs to another account')
             if externalnetwork.location.id != location.id:
                 raise exceptions.BadRequest('ExternalNetwork does not belong to currenct location')
+        else:
+            externalnetwork = None
 
         self.validate_name(account, name)
 
@@ -207,7 +209,7 @@ class cloudapi_cloudspaces(BaseActor):
         if not networkid:
             raise exceptions.ServiceUnavailable("Failed to get networkid")
 
-        netinfo = self.network.getExternalIpAddress(location, externalnetworkId)
+        netinfo = self.network.getExternalIpAddress(location, externalnetwork)
         if netinfo is None:
             raise exceptions.ServiceUnavailable("No available external IP Addresses")
 
@@ -341,31 +343,23 @@ class cloudapi_cloudspaces(BaseActor):
         :param cloudspaceId: id of the cloudspace
         :return dict with cloudspace details
         """
-        cloudspaceObject = self.models.cloudspace.get(int(cloudspaceId))
+        cloudspaceObject = self.models.Cloudspace.get(cloudspaceId)
 
-        # For backwards compatibility, set the secret if it is not filled in
-        if len(cloudspaceObject.secret) == 0:
-            cloudspaceObject.secret = str(uuid.uuid4())
-            self.models.cloudspace.set(cloudspaceObject)
-
-        cloudspace_acl = authenticator.auth({}).getCloudspaceAcl(cloudspaceObject.id)
-        cloudspace = {"accountId": cloudspaceObject.accountId,
+        cloudspace_acl = authenticator.auth({}).getCloudspaceAcl(cloudspaceObject)
+        cloudspace = {"accountId": str(cloudspaceObject.account.id),
                       "acl": [{"right": ''.join(sorted(ace['right'])), "type": ace['type'],
                                "userGroupId": ace['userGroupId'], "status": ace['status'],
                                "canBeDeleted": ace['canBeDeleted']} for _, ace in
                               cloudspace_acl.items()],
-                      "description": cloudspaceObject.descr,
+                      "description": cloudspaceObject.description,
                       'updateTime': cloudspaceObject.updateTime,
                       'creationTime': cloudspaceObject.creationTime,
-                      "id": cloudspaceObject.id,
-                      "gid": cloudspaceObject.gid,
+                      "id": str(cloudspaceObject.id),
+                      "locationId": str(cloudspaceObject.location.id),
                       "name": cloudspaceObject.name,
                       "resourceLimits": cloudspaceObject.resourceLimits,
-                      "publicipaddress": getIP(cloudspaceObject.externalnetworkip),
                       "externalnetworkip": getIP(cloudspaceObject.externalnetworkip),
-                      "status": cloudspaceObject.status,
-                      "location": cloudspaceObject.location,
-                      "secret": cloudspaceObject.secret}
+                      "status": cloudspaceObject.status}
         return cloudspace
 
     @authenticator.auth(acl={'cloudspace': set('U')})
@@ -405,44 +399,39 @@ class cloudapi_cloudspaces(BaseActor):
 
         # get cloudspaces access via account
         q = {'acl.userGroupId': user}
-        query = {'$query': q, '$fields': ['id']}
-        accountaccess = set(ac['id'] for ac in self.models.account.search(query)[1:])
-        q = {'accountId': {'$in': list(accountaccess)}}
-        query = {'$query': q, '$fields': ['id']}
-        cloudspaceaccess.update(cs['id'] for cs in self.models.cloudspace.search(query)[1:])
+        accountaccess = set(ac.id for ac in self.models.Account.find(q).only('id'))
+        q = {'account': {'$in': list(accountaccess)}}
+        cloudspaceaccess.update(cs.id for cs in self.models.Cloudspace.find(q).only('id'))
 
         # get cloudspaces access via atleast one vm
         q = {'acl.userGroupId': user, 'status': {'$ne': 'DESTROYED'}}
-        query = {'$query': q, '$fields': ['cloudspaceId']}
-        cloudspaceaccess.update(vm['cloudspaceId'] for vm in self.models.vmachine.search(query)[1:])
+        cloudspaceaccess.update(vm['cloudspaceId'] for vm in self.models.VMachine.find(q).only('id'))
 
-        fields = ['id', 'name', 'descr', 'status', 'accountId', 'acl', 'externalnetworkip',
-                  'location', 'gid', 'creationTime', 'updateTime']
         q = {"$or": [{"acl.userGroupId": user},
                      {"id": {"$in": list(cloudspaceaccess)}}],
              "status": {"$ne": "DESTROYED"}}
-        query = {'$query': q, '$fields': fields}
-        cloudspaces = self.models.cloudspace.search(query)[1:]
+        cloudspaces = self.models.Cloudspace.find(q)
 
-        for cloudspace in cloudspaces:
-            account = self.models.account.get(cloudspace['accountId'])
-            cloudspace['publicipaddress'] = getIP(cloudspace['externalnetworkip'])
-            cloudspace['externalnetworkip'] = cloudspace['publicipaddress']
-            cloudspace['accountName'] = account.name
-            cloudspace_acl = authenticator.auth({}).getCloudspaceAcl(cloudspace['id'])
+        result = list()
+        for cloudspaceobj in cloudspaces:
+            cloudspace = cloudspaceobj.to_dict()
+            cloudspace['externalnetworkip'] = getIP(cloudspaceobj.externalnetworkip)
+            cloudspace['accountName'] = cloudspaceobj.account.name
+            cloudspace_acl = authenticator.auth({}).getCloudspaceAcl(cloudspaceobj)
             cloudspace['acl'] = [{"right": ''.join(sorted(ace['right'])), "type": ace['type'],
                                   "status": ace['status'],
                                   "userGroupId": ace['userGroupId'],
                                   "canBeDeleted": ace['canBeDeleted']} for _, ace in
                                  cloudspace_acl.items()]
-            for acl in account.acl:
+            for acl in cloudspaceobj.account.acl:
                 if acl.userGroupId == user.lower() and acl.type == 'U':
-                    cloudspace['accountAcl'] = acl.obj2dict()
+                    cloudspace['accountAcl'] = acl.to_dict()
+            result.append(cloudspace)
 
-        return cloudspaces
+        return result
 
     # Unexposed actor
-    def getConsumedMemoryCapacity(self, cloudspaceId):
+    def getConsumedMemoryCapacity(self, machines):
         """
         Calculate the total consumed memory by the machines in the cloudspace in GB
 
@@ -450,22 +439,14 @@ class cloudapi_cloudspaces(BaseActor):
         :return: the total consumed memory
         """
         consumedmemcapacity = 0
-        machines = self.models.vmachine.search({'$fields': ['id', 'sizeId'],
-                                                '$query': {'cloudspaceId': cloudspaceId,
-                                                           'status': {
-                                                               '$nin': ['DESTROYED', 'ERROR']}}},
-                                               size=0)[1:]
-
-        memsizes = {s['id']: s['memory'] for s in
-                    self.models.size.search({'$fields': ['id', 'memory']})[1:]}
 
         for machine in machines:
-            consumedmemcapacity += memsizes[machine['sizeId']]
+            consumedmemcapacity += machine.size.memory
 
         return consumedmemcapacity / 1024.0
 
     # Unexposed actor
-    def getConsumedCPUCores(self, cloudspaceId):
+    def getConsumedCPUCores(self, machines):
         """
         Calculate the total number of consumed cpu cores by the machines in the cloudspace
 
@@ -473,22 +454,13 @@ class cloudapi_cloudspaces(BaseActor):
         :return: the total number of consumed cpu cores
         """
         numcpus = 0
-        machines = self.models.vmachine.search({'$fields': ['id', 'sizeId'],
-                                                '$query': {'cloudspaceId': cloudspaceId,
-                                                           'status': {
-                                                               '$nin': ['DESTROYED', 'ERROR']}}},
-                                               size=0)[1:]
-
-        cpusizes = {s['id']: s['vcpus'] for s in
-                    self.models.size.search({'$fields': ['id', 'vcpus']})[1:]}
-
         for machine in machines:
-            numcpus += cpusizes[machine['sizeId']]
+            numcpus += machine.size.vcpus
 
         return numcpus
 
     # Unexposed actor
-    def getConsumedVDiskCapacity(self, cloudspaceId):
+    def getConsumedVDiskCapacity(self, machines):
         """
         Calculate the total consumed disk storage by the machines in the cloudspace in GB
 
@@ -496,27 +468,15 @@ class cloudapi_cloudspaces(BaseActor):
         :return: the total consumed disk storage
         """
         consumeddiskcapacity = 0
-        machines = self.models.vmachine.search({'$fields': ['id', 'disks'],
-                                                '$query': {'cloudspaceId': cloudspaceId,
-                                                           'status': {
-                                                               '$nin': ['DESTROYED', 'ERROR']}}},
-                                               size=0)[1:]
 
-        diskids = list()
-        for m in machines:
-            diskids.extend(m['disks'])
-
-        disksizes = {d['id']: d['sizeMax'] for d in self.models.disk.search(
-            {'$query': {'id': {'$in': diskids}, 'status': {'$ne': 'DESTROYED'}},
-             '$fields': ['id', 'sizeMax']}, size=0)[1:]}
         for machine in machines:
-            for diskid in machine['disks']:
-                consumeddiskcapacity += disksizes[diskid]
+            for disk in machine.disks:
+                consumeddiskcapacity += disk.size
 
         return consumeddiskcapacity
 
     # Unexposed actor
-    def getConsumedPublicIPs(self, cloudspaceId):
+    def getConsumedPublicIPs(self, cloudspace):
         """
         Calculate the total number of consumed public IPs by the machines in the cloudspace and the
         cloudspace itself
@@ -525,22 +485,21 @@ class cloudapi_cloudspaces(BaseActor):
         :return: the total number of consumed public IPs
         """
         numpublicips = 0
-        cloudspaceobj = self.models.cloudspace.get(cloudspaceId)
 
         # Add the public IP directly attached to the cloudspace
-        if cloudspaceobj.externalnetworkip:
+        if cloudspace.externalnetworkip:
             numpublicips += 1
 
         # Add the number of machines in cloudspace that have public IPs attached to them
-        numpublicips += self.models.vmachine.count({'cloudspaceId': cloudspaceId,
-                                                    'nics.type': 'PUBLIC',
-                                                    'status': {'$nin': ['DESTROYED', 'ERROR']}})
+        numpublicips += self.models.VMachine.find({'cloudspace': cloudspace.id,
+                                                   'nics.type': 'PUBLIC',
+                                                   'status': {'$nin': ['DESTROYED', 'ERROR']}}).count()
 
         return numpublicips
 
         # Unexposed actor
 
-    def getConsumedNASCapacity(self, cloudspaceId):
+    def getConsumedNASCapacity(self, cloudspace):
         """
         Calculate the total consumed primary disk storage (NAS) by the machines in the cloudspace
         in TB
@@ -553,7 +512,7 @@ class cloudapi_cloudspaces(BaseActor):
         # Unexposed actor
 
     # Unexposed actor
-    def getConsumedNetworkOptTransfer(self, cloudspaceId):
+    def getConsumedNetworkOptTransfer(self, cloudspace):
         """
         Calculate the total sent/received network transfer in operator by the machines in the
         cloudspace in GB
@@ -564,7 +523,7 @@ class cloudapi_cloudspaces(BaseActor):
         return 0
 
     # Unexposed actor
-    def getConsumedNetworkPeerTransfer(self, cloudspaceId):
+    def getConsumedNetworkPeerTransfer(self, cloudspace):
         """
         Calculate the total sent/received network transfer peering by the machines in the
         cloudspace in GB
@@ -679,8 +638,9 @@ class cloudapi_cloudspaces(BaseActor):
         :param maxNumPublicIP: max number of assigned public IPs
         :return: True if update was successful
         """
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
         active_cloudspaces = self._listActiveCloudSpaces(cloudspace.accountId)
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only('id', 'size', 'disks')
 
         if name in [space['name'] for space in active_cloudspaces] and name != cloudspace.name:
             raise exceptions.Conflict('Cloud Space with name %s already exists.' % name)
@@ -697,7 +657,7 @@ class cloudapi_cloudspaces(BaseActor):
                                                     maxNetworkPeerTransfer, maxNumPublicIP)
 
         if maxMemoryCapacity is not None:
-            consumedmemcapacity = self.getConsumedMemoryCapacity(cloudspaceId)
+            consumedmemcapacity = self.getConsumedMemoryCapacity(machines)
             if maxMemoryCapacity != -1 and maxMemoryCapacity < consumedmemcapacity:
                 raise exceptions.BadRequest("Cannot set the maximum memory capacity to a value "
                                             "that is less than the current consumed memory "
@@ -706,7 +666,7 @@ class cloudapi_cloudspaces(BaseActor):
                 cloudspace.resourceLimits['CU_M'] = maxMemoryCapacity
 
         if maxVDiskCapacity is not None:
-            consumedvdiskcapacity = self.getConsumedVDiskCapacity(cloudspaceId)
+            consumedvdiskcapacity = self.getConsumedVDiskCapacity(machines)
             if maxVDiskCapacity != -1 and maxVDiskCapacity < consumedvdiskcapacity:
                 raise exceptions.BadRequest("Cannot set the maximum vdisk capacity to a value that "
                                             "is less than the current consumed vdisk capacity %s "
@@ -715,7 +675,7 @@ class cloudapi_cloudspaces(BaseActor):
                 cloudspace.resourceLimits['CU_D'] = maxVDiskCapacity
 
         if maxCPUCapacity is not None:
-            consumedcpucapacity = self.getConsumedCPUCores(cloudspaceId)
+            consumedcpucapacity = self.getConsumedCPUCores(machines)
             if maxCPUCapacity != -1 and maxCPUCapacity < consumedcpucapacity:
                 raise exceptions.BadRequest("Cannot set the maximum cpu cores to a value that "
                                             "is less than the current consumed cores %s ." %
@@ -733,7 +693,7 @@ class cloudapi_cloudspaces(BaseActor):
                 cloudspace.resourceLimits['CU_NP'] = maxNetworkPeerTransfer
 
         if maxNumPublicIP is not None:
-            assingedpublicip = self.getConsumedPublicIPs(cloudspaceId)
+            assingedpublicip = self.getConsumedPublicIPs(cloudspace)
             if maxNumPublicIP != -1 and maxNumPublicIP < 1:
                 raise exceptions.BadRequest("Cloudspace must have reserve at least 1 Public IP "
                                             "address for its VFW")
@@ -748,7 +708,7 @@ class cloudapi_cloudspaces(BaseActor):
         return True
 
     # Unexposed actor
-    def getConsumedCloudUnits(self, cloudspaceId, **kwargs):
+    def getConsumedCloudUnits(self, cloudspace, **kwargs):
         """
         Calculate the currently consumed cloud units for resources in a cloudspace.
         Calculated cloud units are returned in a dict which includes:
@@ -761,10 +721,11 @@ class cloudapi_cloudspaces(BaseActor):
         :return: dict with the consumed cloud units
         """
         consumedcudict = dict()
-        consumedcudict['CU_M'] = self.getConsumedMemoryCapacity(cloudspaceId)
-        consumedcudict['CU_C'] = self.getConsumedCPUCores(cloudspaceId)
-        consumedcudict['CU_D'] = self.getConsumedVDiskCapacity(cloudspaceId)
-        consumedcudict['CU_I'] = self.getConsumedPublicIPs(cloudspaceId)
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only('id', 'size', 'disks')
+        consumedcudict['CU_M'] = self.getConsumedMemoryCapacity(machines)
+        consumedcudict['CU_C'] = self.getConsumedCPUCores(machines)
+        consumedcudict['CU_D'] = self.getConsumedVDiskCapacity(machines)
+        consumedcudict['CU_I'] = self.getConsumedPublicIPs(cloudspace)
 
         return consumedcudict
 
@@ -791,7 +752,7 @@ class cloudapi_cloudspaces(BaseActor):
         return result
 
     # Unexposed actor
-    def checkAvailablePublicIPs(self, cloudspaceId, numips=1):
+    def checkAvailablePublicIPs(self, cloudspace, numips=1):
         """
         Check that the required number of ip addresses are available in the given cloudspace
 
@@ -800,8 +761,7 @@ class cloudapi_cloudspaces(BaseActor):
         :return: True if check succeeds, otherwise raise a 400 BadRequest error
         """
         # Validate that there still remains enough public IP addresses to assign in account
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        j.apps.cloudapi.accounts.checkAvailablePublicIPs(cloudspace.accountId, numips)
+        j.apps.cloudapi.accounts.checkAvailablePublicIPs(cloudspace.account, numips)
 
         # Validate that there still remains enough public IP addresses to assign in cloudspace
         resourcelimits = cloudspace.resourceLimits
@@ -809,7 +769,7 @@ class cloudapi_cloudspaces(BaseActor):
             reservedcus = cloudspace.resourceLimits['CU_I']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedPublicIPs(cloudspaceId)
+                consumedcus = self.getConsumedPublicIPs(cloudspace)
                 availablecus = reservedcus - consumedcus
                 if availablecus < numips:
                     raise exceptions.BadRequest("Required actions will consume an extra %s public "
@@ -819,7 +779,7 @@ class cloudapi_cloudspaces(BaseActor):
         return True
 
     # Unexposed actor
-    def checkAvailableMachineResources(self, cloudspaceId, numcpus=0, memorysize=0, vdisksize=0, checkaccount=True):
+    def checkAvailableMachineResources(self, cloudspace, numcpus=0, memorysize=0, vdisksize=0, checkaccount=True):
         """
         Check that the required machine resources are available in the given cloudspace
 
@@ -831,10 +791,10 @@ class cloudapi_cloudspaces(BaseActor):
         :return: True if check succeeds, otherwise raise a 400 BadRequest error
         """
         # Validate that there still remains enough public IP addresses to assign in cloudspace
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only('id', 'size', 'disks')
         resourcelimits = cloudspace.resourceLimits
         if checkaccount:
-            j.apps.cloudapi.accounts.checkAvailableMachineResources(cloudspace.accountId, numcpus,
+            j.apps.cloudapi.accounts.checkAvailableMachineResources(cloudspace.account, numcpus,
                                                                     memorysize, vdisksize)
 
         # Validate that there still remains enough cpu cores to assign in cloudspace
@@ -842,7 +802,7 @@ class cloudapi_cloudspaces(BaseActor):
             reservedcus = cloudspace.resourceLimits['CU_C']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedCPUCores(cloudspaceId)
+                consumedcus = self.getConsumedCPUCores(machines)
                 availablecus = reservedcus - consumedcus
                 if availablecus < numcpus:
                     raise exceptions.BadRequest("Required actions will consume an extra %s core(s),"
@@ -854,7 +814,7 @@ class cloudapi_cloudspaces(BaseActor):
             reservedcus = cloudspace.resourceLimits['CU_M']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedMemoryCapacity(cloudspaceId)
+                consumedcus = self.getConsumedMemoryCapacity(machines)
                 availablecus = reservedcus - consumedcus
                 if availablecus < memorysize:
                     raise exceptions.BadRequest("Required actions will consume an extra %s GB of "
@@ -866,7 +826,7 @@ class cloudapi_cloudspaces(BaseActor):
             reservedcus = cloudspace.resourceLimits['CU_D']
 
             if reservedcus != -1:
-                consumedcus = self.getConsumedVDiskCapacity(cloudspaceId)
+                consumedcus = self.getConsumedVDiskCapacity(machines)
                 availablecus = reservedcus - consumedcus
                 if availablecus < vdisksize:
                     raise exceptions.BadRequest("Required actions will consume an extra %s GB of "
@@ -876,7 +836,7 @@ class cloudapi_cloudspaces(BaseActor):
         return True
 
     # Unexposed actor
-    def getConsumedCloudUnitsInCloudspaces(self, cloudspacesIds, deployedcloudspacesIds, **kwargs):
+    def getConsumedCloudUnitsInCloudspaces(self, cloudspaces, deployedcloudspaces, **kwargs):
         """
         Calculate the currently consumed cloud units for resources in a cloudspace.
         Calculated cloud units are returned in a dict which includes:
@@ -888,17 +848,18 @@ class cloudapi_cloudspaces(BaseActor):
         :param cloudspaceId: id of the cloudspace consumption should be calculated for
         :return: dict with the consumed cloud units
         """
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace__in=cloudspaces).only('id', 'size')
         consumedcudict = dict()
-        consumedcudict['CU_M'] = self.getConsumedMemoryInCloudspaces(cloudspacesIds)
-        consumedcudict['CU_C'] = self.getConsumedCPUCoresInCloudspaces(cloudspacesIds)
+        consumedcudict['CU_M'] = self.getConsumedMemoryInCloudspaces(machines)
+        consumedcudict['CU_C'] = self.getConsumedCPUCoresInCloudspaces(machines)
         consumedcudict['CU_D'] = 0
         # for calculating consumed ips we should consider only deployed cloudspaces
-        consumedcudict['CU_I'] = self.getConsumedPublicIPsInCloudspaces(deployedcloudspacesIds)
+        consumedcudict['CU_I'] = self.getConsumedPublicIPsInCloudspaces(deployedcloudspaces)
 
         return consumedcudict
 
     # unexposed actor
-    def getConsumedMemoryInCloudspaces(self, cloudspacesIds):
+    def getConsumedMemoryInCloudspaces(self, machines):
         """
         Calculate the total number of consumed memory by the machines in a given cloudspaces list
 
@@ -907,21 +868,11 @@ class cloudapi_cloudspaces(BaseActor):
         """
 
         consumedmemcapacity = 0
-        machines = self.models.vmachine.search({'$fields': ['id', 'sizeId'],
-                                                '$query': {'cloudspaceId': {'$in': cloudspacesIds},
-                                                           'status': {
-                                                               '$nin': ['DESTROYED', 'ERROR']}}},
-                                               size=0)[1:]
-        memsizes = {s['id']: s['memory'] for s in
-                    self.models.size.search({'$fields': ['id', 'memory']})[1:]}
-
-        machinessizeids = [d['sizeId'] for d in machines]
-        consumedmemcapacity = sum([memsizes[x] for x in machinessizeids])
-
+        consumedmemcapacity = sum(m.size.memory for m in machines)
         return consumedmemcapacity / 1024.0
 
     # unexposed actor
-    def getConsumedCPUCoresInCloudspaces(self, cloudspacesIds):
+    def getConsumedCPUCoresInCloudspaces(self, machines):
         """
         Calculate the total number of consumed cpu cores by the machines in a given cloudspaces list
 
@@ -929,20 +880,11 @@ class cloudapi_cloudspaces(BaseActor):
         :return: the total number of consumed cpu cores
         """
         numcpus = 0
-        machines = self.models.vmachine.search({'$fields': ['id', 'sizeId'],
-                                                '$query': {'cloudspaceId': {'$in': cloudspacesIds},
-                                                           'status': {
-                                                               '$nin': ['DESTROYED', 'ERROR']}}},
-                                               size=0)[1:]
-
-        cpusizes = {s['id']: s['vcpus'] for s in
-                    self.models.size.search({'$fields': ['id', 'vcpus']})[1:]}
-        machinessizeids = [d['sizeId'] for d in machines]
-        numcpus = sum([cpusizes[x] for x in machinessizeids])
+        numcpus = sum(m.size.vcpus for m in machines)
         return numcpus
 
     # unexposed actor
-    def getConsumedPublicIPsInCloudspaces(self, cloudspacesIds):
+    def getConsumedPublicIPsInCloudspaces(self, cloudspaces):
         """
         Calculate the total number of consumed public IPs by the machines in a given cloudspaces list
 
@@ -950,15 +892,14 @@ class cloudapi_cloudspaces(BaseActor):
         :return: the total number of consumed public IPs
         """
         numpublicips = 0
-        cloudspaces = self.models.cloudspace.search({'id': {'$in': cloudspacesIds}})[1:]
-
         # Add the public IP directly attached to the cloudspace
         for cloudspace in cloudspaces:
             if cloudspace.get('externalnetworkip'):
                 numpublicips += 1
 
         # Add the number of machines in cloudspace that have public IPs attached to them
-        numpublicips += self.models.vmachine.count({'cloudspaceId': {'$in': cloudspacesIds},
+        cloudspaceids = [cs.id for cs in cloudspaces]
+        numpublicips += self.models.vmachine.count({'cloudspaceId': {'$in': cloudspaceids},
                                                     'nics.type': 'PUBLIC',
                                                     'status': {'$nin': ['DESTROYED', 'ERROR']}})
         return numpublicips

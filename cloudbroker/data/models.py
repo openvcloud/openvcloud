@@ -1,11 +1,35 @@
 from mongoengine import fields
 from mongoengine import EmbeddedDocument, Document
 from js9 import j
+import json
 from JumpScale9Portal.data.models.Models import Base, Errorcondition
 
 DB = 'openvcloud'
 
 default_meta = {'abstract': True, "db_alias": DB}
+
+
+def list_dereference(listobj):
+    for idx, value in enumerate(listobj):
+        if isinstance(value, dict):
+            if '$oid' in value:
+                listobj[idx] = value['$oid']
+            else:
+                dict_derefence(value)
+        elif isinstance(value, list):
+            list_dereference(value)
+
+
+def dict_derefence(obj):
+    for key, value in obj.items():
+        if isinstance(value, dict):
+            if '$oid' in value:
+                obj['{}Id'.format(key)] = value['$oid']
+                obj.pop(key)
+            else:
+                dict_derefence(value)
+        elif isinstance(value, list):
+            list_dereference(value)
 
 
 class ModelBase(Base):
@@ -16,6 +40,7 @@ class ModelBase(Base):
         d.pop("_cls", None)
         d.pop("_id", None)
         d['id'] = str(self.id)
+        dict_derefence(d)
         return d
 
 
@@ -24,6 +49,11 @@ class ACE(EmbeddedDocument):
     type = fields.StringField(choices=['U', 'G'])
     right = fields.StringField()
     status = fields.StringField()
+
+    def to_dict(self):
+        data = json.loads(self.to_json())
+        data.pop('_cls', None)
+        return data
 
 
 class Account(ModelBase):
@@ -50,6 +80,7 @@ class Image(ModelBase):
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'CREATING', 'DELETING'])
     account = fields.ReferenceField(Account)
     acl = fields.EmbeddedDocumentListField(ACE)
+    disks = fields.ListField(fields.IntField())
     username = fields.StringField()
     password = fields.StringField()
 
@@ -151,10 +182,16 @@ class Disk(ModelBase):
     referenceId = fields.StringField()
     iops = fields.IntField()
     account = fields.ReferenceField(Account)
+    location = fields.ReferenceField(Location)
     acl = fields.EmbeddedDocumentListField(ACE)
-    role = fields.StringField(choices=['BOOT', 'DB', 'CACHE'])
+    type = fields.StringField(choices=['BOOT', 'DB', 'CACHE'])
     diskPath = fields.StringField()
     snapshots = fields.EmbeddedDocumentListField(Snapshot)
+
+
+class Macaddress(ModelBase):
+    count = fields.IntField(default=0)
+    location = fields.ReferenceField(Location, required=True)
 
 
 class VMachine(ModelBase):
@@ -167,12 +204,14 @@ class VMachine(ModelBase):
     referenceId = fields.StringField()
     accounts = fields.EmbeddedDocumentListField(VMAccount)
     status = fields.StringField(choices=['HALTED', 'INIT', 'RUNNING', 'PAUSED', 'DESTROYED'])
+    type = fields.StringField()
     hostName = fields.StringField()
     cpus = fields.IntField()
     stack = fields.ReferenceField(Stack)
     acl = fields.EmbeddedDocumentListField(ACE)
     cloudspace = fields.ReferenceField(Cloudspace)
-    updateTime = fields.IntField()
+    creationTime = fields.IntField(default=j.data.time.getTimeEpoch)
+    updateTime = fields.IntField(default=j.data.time.getTimeEpoch)
     deletionTime = fields.IntField()
     tags = fields.StringField()
 

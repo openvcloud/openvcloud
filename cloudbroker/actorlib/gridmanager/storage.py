@@ -1,10 +1,10 @@
 from .base import BaseManager
 import random
 
-VDISKTYPEMAP = {'B': 'boot',
-                'D': 'db',
-                'C': 'cache',
-                'T': 'tmp'}
+VDISKTYPEMAP = {'BOOT': 'boot',
+                'DB': 'db',
+                'CACHE': 'cache',
+                'TMP': 'tmp'}
 
 
 class StorageManager(BaseManager):
@@ -14,17 +14,14 @@ class StorageManager(BaseManager):
             volume['templatevdisk'] = image.referenceId
         cluster = random.choice(self.client.storageclusters.ListAllClusters().json())
         diskid = 'vdisk-{}'.format(disk.id)
-        volume.update({'size': disk.sizeMax,
+        volume.update({'size': disk.size,
                        'blocksize': 4096,
                        'id': diskid,
                        'storagecluster': cluster,
                        'type': VDISKTYPEMAP.get(disk.type, 'boot')})
         self.client.vdisks.CreateNewVdisk(volume)
         disk.referenceId = '{}:{}'.format(cluster, diskid)
-        disk.status = 'CREATED'
-        self.models.disk.updateSearch({'id': disk.id},
-                                      {'$set': {'status': disk.status,
-                                                'referenceId': disk.referenceId}})
+        disk.modify(referenceId=disk.referenceId)
 
     def deleteVolume(self, disk):
         if disk.referenceId:

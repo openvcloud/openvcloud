@@ -13,11 +13,11 @@ class cloudbroker_image(j.tools.code.classGetBase()):
         #cloudbroker_image_osis.__init__(self)
 
 
-    def create(self, name, gid, description, size, accountId, type, referenceId, **kwargs):
+    def create(self, name, locationId, description, size, accountId, type, referenceId, **kwargs):
         """
         create image
         param:name name of the image
-        param:gid location of the image.
+        param:locationId location of the image.
         param:description extra description of the image
         param:size minimal disk size in Gigabyte
         param:accountId id of account to which this image belongs
