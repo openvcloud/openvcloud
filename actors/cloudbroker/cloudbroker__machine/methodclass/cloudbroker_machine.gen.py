@@ -80,7 +80,7 @@ class cloudbroker_machine(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method create")
 
-    def createOnStack(self, cloudspaceId, name, description, sizeId, imageId, disksize, stackid, datadisks, **kwargs):
+    def createOnStack(self, cloudspaceId, name, description, sizeId, imageId, disksize, stackId, datadisks, **kwargs):
         """
         Create a machine on a specific stackid
         param:cloudspaceId id of space in which we want to create a machine
@@ -89,7 +89,7 @@ class cloudbroker_machine(j.tools.code.classGetBase()):
         param:sizeId id of the specific size
         param:imageId id of the specific image
         param:disksize size of base volume
-        param:stackid id of the stack
+        param:stackId id of the stack
         param:datadisks list of data disk sizes in gigabytes
         result bool
         """
@@ -228,13 +228,13 @@ class cloudbroker_machine(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method listSnapshots")
 
-    def moveToDifferentComputeNode(self, machineId, reason, targetStackId, force, **kwargs):
+    def moveToDifferentComputeNode(self, machineId, reason, targetstackId, force, **kwargs):
         """
         Live-migrates a machine to a different CPU node.
         If no targetnode is given, the normal capacity scheduling is used to determine a targetnode
         param:machineId Machine id
         param:reason Reason
-        param:targetStackId Name of the compute node the machine has to be moved to
+        param:targetstackId Name of the compute node the machine has to be moved to
         param:force force move of machine even if storage is busy
         """
         #put your code here to implement this method

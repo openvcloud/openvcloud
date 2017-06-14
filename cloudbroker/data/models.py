@@ -32,16 +32,31 @@ def dict_derefence(obj):
             list_dereference(value)
 
 
+def to_dict(document):
+    d = j.data.serializer.json.loads(document.to_json())
+    d.pop("_cls", None)
+    objid = d.pop("_id", None)
+    if objid:
+        d['id'] = str(document.id)
+    dict_derefence(d)
+    return d
+
+
+def to_python(obj):
+    if isinstance(obj, list):
+        results = []
+        for item in obj:
+            results.append(to_dict(item))
+        return results
+    else:
+        return to_dict(obj)
+
+
 class ModelBase(Base):
     meta = default_meta
 
     def to_dict(self):
-        d = j.data.serializer.json.loads(Document.to_json(self))
-        d.pop("_cls", None)
-        d.pop("_id", None)
-        d['id'] = str(self.id)
-        dict_derefence(d)
-        return d
+        return to_dict(self)
 
 
 class ACE(EmbeddedDocument):

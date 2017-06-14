@@ -1,5 +1,6 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
+from cloudbroker.data.models import to_python
 from cloudbroker.actorlib import authenticator
 from cloudbroker.actorlib.baseactor import BaseActor
 import netaddr
@@ -18,7 +19,7 @@ class cloudapi_portforwarding(BaseActor):
 
     def _getLocalIp(self, machine):
         for nic in machine.nics:
-            if nic.ipAddress != 'Undefined':
+            if nic.type == 'vxlan':
                 return nic.ipAddress
         return None
 
@@ -34,9 +35,7 @@ class cloudapi_portforwarding(BaseActor):
         :param localPort: local port on vm
         :param protocol: protocol udp or tcp
         """
-        machineId = int(machineId)
-        cloudspaceId = int(cloudspaceId)
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
+        machine = self.models.VMachine.get(machineId)
         protocol = protocol or 'tcp'
 
         if publicPort > 65535 or publicPort < 1:
@@ -45,7 +44,7 @@ class cloudapi_portforwarding(BaseActor):
             raise exceptions.BadRequest("Local port should be between 1 and 65535")
         if protocol and protocol not in ('tcp', 'udp'):
             raise exceptions.BadRequest("Protocol should be either tcp or udp")
-        if cloudspace.status != 'DEPLOYED':
+        if machine.cloudspace.status != 'DEPLOYED':
             raise exceptions.BadRequest("Cannot create a portforwarding during cloudspace deployment.")
 
         try:
@@ -53,25 +52,24 @@ class cloudapi_portforwarding(BaseActor):
         except netaddr.AddrFormatError:
             raise exceptions.BadRequest("Invalid public IP %s" % publicIp)
 
-        if cloudspace.externalnetworkip.split('/')[0] != publicIp:
+        if machine.cloudspace.externalnetworkip.split('/')[0] != publicIp:
             raise exceptions.BadRequest("Invalid public IP %s" % publicIp)
 
-        machine = self.models.vmachine.get(machineId)
         localIp = self._getLocalIp(machine)
         if localIp is None:
             raise exceptions.NotFound('Cannot create portforwarding when Virtual Machine did not acquire an IP Address.')
 
-        if self._selfcheckduplicate(cloudspace, publicIp, publicPort, protocol):
+        if self._selfcheckduplicate(machine.cloudspace, publicIp, publicPort, protocol):
             raise exceptions.Conflict("Forward to %s with port %s already exists" % (publicIp, publicPort))
-        forward = {'fromAddr': publicIp,
-                   'fromPort': publicPort,
-                   'toAddr': localIp,
-                   'toPort': localPort,
-                   'protocol': protocol}
-        self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                            {'$push': {'forwardRules': forward}})
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        self.cb.netmgr.update(cloudspace)
+        forward = self.models.ForwardRule(
+            fromAddr=publicIp,
+            fromPort=publicPort,
+            toAddr=localIp,
+            toPort=localPort,
+            protocol=protocol
+        )
+        machine.cloudspace.modify(push__forwardRules=forward)
+        self.cb.netmgr.update(machine.cloudspace)
         return True
 
     def deleteByVM(self, machine, **kwargs):
@@ -123,15 +121,13 @@ class cloudapi_portforwarding(BaseActor):
         :param publicPort: port forwarding public port
         :param proto: port forwarding protocol
         """
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
         forward = {'fromAddr': publicIp,
                    'fromPort': publicPort}
         if proto:
             forward['protocol'] = proto
-        res = self.models.cloudspace.updateSearch({'id': cloudspaceId},
-                                                  {'$pull': {'forwardRules': forward}})
-        if res['nModified'] != 0:
-            cloudspace = self.models.cloudspace.get(cloudspaceId)
-            self.cb.netmgr.update(cloudspace)
+        cloudspace.modify(pull__forwardRules=forward)
+        self.cb.netmgr.update(cloudspace)
         return True
 
     @authenticator.auth(acl={'cloudspace': set('C')})
@@ -176,27 +172,28 @@ class cloudapi_portforwarding(BaseActor):
                                             {'$push': {'forwardRules': forward}})
         return self._process_list(cloudspace.forwardRules, cloudspaceId)
 
-    def _process_list(self, forwards, cloudspaceId):
+    def _process_list(self, forwards, cloudspace):
         result = list()
-        query = {'$query': {'cloudspaceId': cloudspaceId, 'status': {'$ne': 'DESTROYED'}},
-                 '$fields': ['id', 'nics.ipAddress', 'name']}
-
-        machines = self.models.vmachine.search(query, size=0)[1:]
+        machines = self.models.VMachine.objects(cloudspace=cloudspace, status__nin=['DESTROYED', 'ERROR']).only('nics', 'name', 'id')
 
         def getMachineByIP(ip):
             for machine in machines:
-                for nic in machine['nics']:
-                    if nic['ipAddress'] == ip:
+                for nic in machine.nics:
+                    if nic.ipAddress == ip:
                         return machine
 
-        for index, f in enumerate(forwards):
+        for index, forward in enumerate(forwards):
+            f = to_python(forward)
             f['id'] = index
-            machine = getMachineByIP(f['toAddr'])
+            f['publicIp'] = f.pop('fromAddr')
+            f['publicPort'] = f.pop('fromPort')
+            f['localPort'] = f.pop('toPort')
+            machine = getMachineByIP(forward.toAddr)
             if machine is None:
-                f['machineName'] = f['toAddr']
+                f['machineName'] = forward.toAddr
             else:
-                f['machineName'] = "%s (%s)" % (machine['name'], f['toAddr'])
-                f['machineId'] = machine['id']
+                f['machineName'] = "%s (%s)" % (machine.name, forward.toAddr)
+                f['machineId'] = str(machine.id)
             if not f['protocol']:
                 f['protocol'] = 'tcp'
             result.append(f)
@@ -212,24 +209,24 @@ class cloudapi_portforwarding(BaseActor):
         """
         machine = None
         if machineId:
-            machineId = int(machineId)
-            machine = self.models.vmachine.get(machineId)
+            machine = self.models.VMachine.get(machineId)
+            cloudspace = machine.cloudspace
+        else:
+            cloudspace = self.models.Cloudspace.get(cloudspaceId)
 
         def getIP():
             if machine:
                 for nic in machine.nics:
-                    if nic.ipAddress != 'Undefined':
+                    if nic.type == 'vxlan':
                         return nic.ipAddress
             return None
 
-        cloudspaceId = int(cloudspaceId)
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        forwards = cloudspace.dump()['forwardRules']
+        forwards = cloudspace.forwardRules
         if machine:
             localip = getIP()
-            forwards = filter(lambda fw: fw['toAddr'] == localip, forwards)
+            forwards = filter(lambda fw: fw.toAddr == localip, forwards)
 
-        return self._process_list(forwards, cloudspaceId)
+        return self._process_list(forwards, cloudspace)
 
     def listcommonports(self, **kwargs):
         """

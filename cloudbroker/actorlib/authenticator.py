@@ -54,7 +54,7 @@ class auth(object):
                                 type='U', canBeDeleted=True, status=ace.status)
                 result[ace.userGroupId] = ace_dict
 
-        for user_id, ace in self.getCloudspaceAcl(machine.cloudspaceId).items():
+        for user_id, ace in self.getCloudspaceAcl(machine.cloudspace).items():
             if user_id in result:
                 result[user_id]['canBeDeleted'] = False
                 result[user_id]['right'].update(ace['right'])

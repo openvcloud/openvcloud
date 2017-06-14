@@ -53,7 +53,7 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if "start" in machine.tags.split(" "):
             j.apps.cloudbroker.machine.untag(machineId=machine.id, tagName="start")
         if machine.status not in ['RUNNING', 'PAUSED']:
@@ -68,7 +68,7 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.status not in ['HALTED']:
             self.cb.machine.stop(machine, force)
             self._updatestatus(machineId, 'stop', enums.MachineStatus.halted)
@@ -81,7 +81,7 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.status in ['HALTED']:
             self.cb.machine.start(machine)
         elif machine.status in ['RUNNING', 'PAUSED']:
@@ -98,7 +98,7 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.status in ['HALTED']:
             self.cb.machine.start(machine)
         elif machine.status in ['RUNNING', 'PAUSED']:
@@ -115,7 +115,7 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.status in ['RUNNING']:
             self.cb.machine.pause(machine)
             self._updatestatus(machineId, 'pause', enums.MachineStatus.paused)
@@ -128,7 +128,7 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.status in ['PAUSED']:
             self.cb.machine.resume(machine)
             self._updatestatus(machineId, 'resume', enums.MachineStatus.running)
@@ -147,7 +147,7 @@ class cloudapi_machines(BaseActor):
         :return int, id of the disk
 
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if len(machine.disks) >= 25:
             raise exceptions.BadRequest("Cannot create more than 25 disk on a machine")
         cloudspace = self.models.cloudspace.get(machine.cloudspaceId)
@@ -170,7 +170,7 @@ class cloudapi_machines(BaseActor):
         :param diskId: id of disk to detach
         :return: True if disk was detached successfully
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         diskId = int(diskId)
         if diskId not in machine.disks:
             return True
@@ -223,7 +223,7 @@ class cloudapi_machines(BaseActor):
         :param basename: snapshot id on which the template is based
         :return True if template was created
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         origimage = self.models.image.get(machine.imageId)
         if origimage.accountId:
             raise exceptions.Conflict("Can not make template from a machine which was created from a custom template.")
@@ -543,7 +543,7 @@ class cloudapi_machines(BaseActor):
         :return True if machine was deleted successfully
 
         """
-        vmachinemodel = self._getMachine(machineId)
+        vmachinemodel = self.models.VMachine.get(machineId)
         vms = self.models.vmachine.search({'cloneReference': machineId, 'status': {'$ne': 'DESTROYED'}})[1:]
         if vms:
             clonenames = ['  * %s' % vm['name'] for vm in vms]
@@ -582,27 +582,25 @@ class cloudapi_machines(BaseActor):
         result
 
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.status in ['DESTROYED', 'DESTROYING']:
             raise exceptions.NotFound('Machine %s not found' % machineId)
         locked = False
-        diskquery = {'id': {'$in': machine.disks}}
-        disks = self.models.disk.search({'$query': diskquery,
-                                         '$fields': ['status', 'type', 'name', 'descr', 'acl', 'sizeMax', 'id']
-                                         })[1:]
-        storage = sum(disk['sizeMax'] for disk in disks)
-        osImage = self.models.image.get(machine.imageId).name
-        updateTime = machine.updateTime if machine.updateTime else None
-        creationTime = machine.creationTime if machine.creationTime else None
+        storage = sum(disk.size for disk in machine.disks)
+        disks = [disk.to_dict() for disk in machine.disks]
+        machinedict = machine.to_dict()
+        osImage = machine.image.name
+        updateTime = machine.updateTime
+        creationTime = machine.creationTime
         acl = list()
-        machine_acl = authenticator.auth().getVMachineAcl(machine.id)
+        machine_acl = authenticator.auth().getVMachineAcl(machine)
         for _, ace in machine_acl.items():
             acl.append({'userGroupId': ace['userGroupId'], 'type': ace['type'], 'canBeDeleted': ace[
                        'canBeDeleted'], 'right': ''.join(sorted(ace['right'])), 'status': ace['status']})
-        return {'id': machine.id, 'cloudspaceid': machine.cloudspaceId, 'acl': acl, 'disks': disks,
-                'name': machine.name, 'description': machine.descr, 'hostname': machine.hostName,
-                'status': machine.status, 'imageid': machine.imageId, 'osImage': osImage, 'sizeid': machine.sizeId,
-                'interfaces': machine.nics, 'storage': storage, 'accounts': machine.accounts, 'locked': locked,
+        return {'id': str(machine.id), 'cloudspaceid': str(machine.cloudspace.id), 'acl': acl, 'disks': disks,
+                'name': machine.name, 'description': machine.description, 'hostname': machine.hostName,
+                'status': machine.status, 'imageid': str(machine.image.id), 'osImage': osImage, 'sizeid': str(machine.size.id),
+                'interfaces': machinedict['nics'], 'storage': storage, 'accounts': machinedict['accounts'], 'locked': locked,
                 'updateTime': updateTime, 'creationTime': creationTime}
 
     # Authentication (permissions) are checked while retrieving the machines
@@ -640,10 +638,6 @@ class cloudapi_machines(BaseActor):
             machines.append(res)
         return machines
 
-    def _getMachine(self, machineId):
-        machineId = int(machineId)
-        return self.models.vmachine.get(machineId)
-
     @authenticator.auth(acl={'machine': set('C')})
     def snapshot(self, machineId, name, **kwargs):
         """
@@ -653,9 +647,13 @@ class cloudapi_machines(BaseActor):
         :param name: name to give snapshot
         :return the timestamp
         """
-        machine = self.models.machine.get(machineId)
-        self.models.disk.updateSearch({'id': {'$in': machine.disks}},
-                                      {'$push': {'snapshots': {'timestamp': j.do.getTimeEpoch(), 'label': name}}})
+        machine = self.models.VMachine.get(machineId)
+        for disk in machine.disks:
+            snapshot = self.models.Snapshot(
+                timestamp=int(time.time()),
+                label=name
+            )
+            disk.update(push__snapshots=snapshot)
 
     @authenticator.auth(acl={'machine': set('R')})
     def listSnapshots(self, machineId, **kwargs):
@@ -667,11 +665,10 @@ class cloudapi_machines(BaseActor):
         """
         snapshots = set()
         out = list()
-        machine = self.models.vmachine.get(machineId)
-        all_disks = self.models.disk.search({'$query': {'id': {'$in': machine.disks}}, '$fields': ['snapshots']})[1:]
-        for disk in all_disks:
-            for snapshot in disk['snapshots']:
-                data = {(snapshot['label'], snapshot['timestamp'])}
+        machine = self.models.VMachine.get(machineId)
+        for disk in machine.disks:
+            for snapshot in disk.snapshots:
+                data = {(snapshot.label, snapshot.timestamp)}
                 snapshots.update(data)
 
         for ss in snapshots:
@@ -686,9 +683,9 @@ class cloudapi_machines(BaseActor):
         :param machineId: id of the machine
         :param epoch: epoch time of snapshot
         """
-        machine = self.models.machine.get(machineId)
-        self.models.disk.updateSearch({'id': {'$in': machine.disks}},
-                                      {'$pull': {'snapshots': {'timestamp': epoch}}})
+        machine = self.models.VMachine.get(machineId)
+        for disk in machine.disks:
+            disk.update(pull__snapshots__timestamp=epoch)
 
     @authenticator.auth(acl={'machine': set('X')})
     @RequireState(enums.MachineStatus.halted, 'A snapshot can only be rolled back to a stopped Machine')
@@ -715,7 +712,7 @@ class cloudapi_machines(BaseActor):
         :param name: name of the machine
         :param description: description of the machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if name:
             self.cb.machine.assertName(machine.cloudspaceId, name)
             machine.name = name
@@ -732,7 +729,7 @@ class cloudapi_machines(BaseActor):
         :return one time url used to connect ot console
 
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.status in ['DESTROYED', 'DESTROYING']:
             raise exceptions.NotFound('Machine %s not found' % machineId)
         if machine.status != enums.MachineStatus.running:
@@ -749,7 +746,7 @@ class cloudapi_machines(BaseActor):
         :param name: name of the cloned machine
         :return id of the new cloned machine
         """
-        machine = self._getMachine(machineId)
+        machine = self.models.VMachine.get(machineId)
         if cloudspaceId is None:
             cloudspace = self.models.cloudspace.get(machine.cloudspaceId)
         else:
