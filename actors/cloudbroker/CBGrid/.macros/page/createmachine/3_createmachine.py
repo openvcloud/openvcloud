@@ -17,7 +17,7 @@ def main(j, args, params, tags, tasklet):
     dropimages = list()
     dropstacks = list()
     disksizes = set()
-    dropstacks.append(('Auto', 0))
+    dropstacks.append(('Auto', ''))
 
     def sizeSorter(size):
         return size['memory']
@@ -45,7 +45,7 @@ def main(j, args, params, tags, tasklet):
                   submit_url='/restmachine/cloudbroker/machine/createOnStack')
     popup.addText('Machine Name', 'name', required=True)
     popup.addText('Machine Description', 'description', required=True)
-    popup.addDropdown('Choose CPU Node', 'stackid', dropstacks)
+    popup.addDropdown('Choose CPU Node', 'stackId', dropstacks)
     popup.addDropdown('Choose Image', 'imageId', dropimages)
     popup.addDropdown('Choose Size', 'sizeId', dropsizes)
     popup.addDropdown('Choose Disk Size', 'disksize', dropdisksizes)

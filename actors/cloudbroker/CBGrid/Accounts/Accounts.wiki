@@ -5,7 +5,7 @@ h2. Accounts
 
 {{action id:'createaccount' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Account'}}
 
-{{actions: gridbinding:'table_cloudbroker_account accountIds'
+{{actions: gridbinding:'table_cloudbroker_Account accountIds'
 - display: Destroy Accounts
   action: /restmachine/cloudbroker/account/deleteAccounts
   reload: false

@@ -20,8 +20,10 @@ def generateUsersList(objdict, accessUserType, users):
         if acl['type'] == 'U':
             userq = j.portal.tools.models.system.User.objects(name=acl['userGroupId'])
             if userq.count() > 0:
-                user = userq.first().to_dict()
+                userobj = userq.first()
+                user = userobj.to_dict()
                 user['userstatus'] = acl['status']
+                user['id'] = userobj.id
             elif acl['status'] == 'INVITED':
                 user = dict()
                 user['name'] = acl['userGroupId']
@@ -47,22 +49,17 @@ def main(j, args, params, tags, tasklet):
         return params
 
     if not models.Cloudspace.exists(id):
-        args.doc.applyTemplate({'id': None}, False)
+        args.doc.applyTemplate({'cloudspace': None}, False)
         return params
 
     cloudspace = models.Cloudspace.get(id)
 
     # Resource limits
     j.apps.cloudbroker.account.cb.fillResourceLimits(cloudspace.resourceLimits)
-    cloudspacedict = cloudspace.to_dict()
 
     users = list()
     users = generateUsersList(cloudspace.account, 'acc', users)
-    cloudspacedict['users'] = generateUsersList(cloudspace, 'cl', users)
-    cloudspace.users = generateUsersList(cloudspace, 'cl', users)
-    args.doc.applyTemplate({'cloudspace': cloudspace}, False)
+    users = generateUsersList(cloudspace, 'cl', users)
+    users = generateUsersList(cloudspace, 'cl', users)
+    args.doc.applyTemplate({'cloudspace': cloudspace, 'users': users}, False)
     return params
-
-
-def match(j, args, params, tags, tasklet):
-    return True

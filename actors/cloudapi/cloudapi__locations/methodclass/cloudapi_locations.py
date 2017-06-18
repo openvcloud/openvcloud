@@ -9,7 +9,10 @@ class cloudapi_locations(BaseActor):
 
         :return list with every element containing details of a location as a dict
         """
-        return self.models.Location.find({})
+        results = []
+        for location in self.models.Location.objects:
+            results.append(location.to_dict())
+        return results
 
     def getUrl(self, **kwargs):
         """

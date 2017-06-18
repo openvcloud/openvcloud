@@ -23,20 +23,20 @@ class cloudbroker_location(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method add")
 
-    def checkVMs(self, gid, **kwargs):
+    def checkVMs(self, locationId, **kwargs):
         """
         Run checkvms jumpscript
-        param:gid id of the grid
+        param:locationId id of the grid
         result 
         """
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method checkVMs")
 
-    def purgeLogs(self, gid, age, **kwargs):
+    def purgeLogs(self, locationId, age, **kwargs):
         """
         Remove logs & eco’s
         By default the logs en eco's older than than 1 week but this can be overriden
-        param:gid id of the grid
+        param:locationId id of the grid
         param:age by default 1 week (-1h, -1w TODO: check the options in the jsgrid purgelogs)
         result 
         """

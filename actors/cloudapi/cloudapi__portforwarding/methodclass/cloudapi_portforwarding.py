@@ -81,10 +81,8 @@ class cloudapi_portforwarding(BaseActor):
         localIp = getIP()
         if localIp is None:
             return True
-        self.models.cloudspace.updateSearch({'id': machine.cloudspaceId},
-                                            {'$pull': {'forwardRules': {'toAddr': localIp}}})
-        cloudspace = self.models.cloudspace.get(machine.cloudspaceId)
-        self.cb.netmgr.update(cloudspace)
+        machine.cloudspace.modify(pull__forwardRules={'toAddr': localIp})
+        self.cb.netmgr.update(machine.cloudspace)
         return True
 
     def _selfcheckduplicate(self, cloudspace, publicIp, publicPort, protocol):

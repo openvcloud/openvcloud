@@ -128,7 +128,7 @@ class auth(object):
                 if value is not None:
                     tags.tagSet(key, str(value.id))
 
-            ctx.env['beaker.session']['tags'] = str(tags)
+            ctx.env['tags'] = str(tags)
             if self.isAuthorized(user, account, cloudspace, machine):
                 return func(*args, **kwargs)
             else:

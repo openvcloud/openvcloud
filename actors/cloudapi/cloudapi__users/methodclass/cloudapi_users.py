@@ -29,7 +29,7 @@ class cloudapi_users(BaseActor):
         accounts = self.models.account.search({'acl.userGroupId': username, 'status': 'CONFIRMED'})[1:]
         if accounts:
             status = accounts[0].get('status', 'CONFIRMED')
-            if j.core.portal.active.auth.authenticate(username, password):
+            if j.portal.tools.server.active.auth.authenticate(username, password):
                 session = ctx.env['beaker.session']
                 session['user'] = username
                 session['account_status'] = status
@@ -100,7 +100,7 @@ class cloudapi_users(BaseActor):
         result:
         """
         ctx = kwargs['ctx']
-        user = j.core.portal.active.auth.getUserInfo(ctx.env['beaker.session']['user'])
+        user = j.portal.tools.server.active.auth.getUserInfo(ctx.env['beaker.session']['user'])
         if user:
             if user.passwd == j.tools.hash.md5_string(oldPassword):
                 if not self._isValidPassword(newPassword):
@@ -117,7 +117,7 @@ class cloudapi_users(BaseActor):
             return 'User not found'
 
     def _sendResetPasswordMail(self, emailaddress, username, resettoken, portalurl):
-        fromaddr = self.hrd.get('instance.openvcloud.supportemail')
+        fromaddr = self.config.get('supportemail')
         if isinstance(emailaddress, list):
             toaddrs = emailaddress
         else:
@@ -130,8 +130,8 @@ class cloudapi_users(BaseActor):
             'portalurl': portalurl
         }
 
-        message = j.core.portal.active.templates.render('cloudbroker/email/users/reset_password.html', **args)
-        subject = j.core.portal.active.templates.render('cloudbroker/email/users/reset_password.subject.txt', **args)
+        message = j.portal.tools.server.active.templates.render('cloudapi/email/users/reset_password.html', **args)
+        subject = j.portal.tools.server.active.templates.render('cloudapi/email/users/reset_password.subject.txt', **args)
 
         j.clients.email.send(toaddrs, fromaddr, subject, message, files=None)
 
@@ -301,7 +301,7 @@ class cloudapi_users(BaseActor):
         return self._sendShareEmail(emailaddress, resourcetype, resourceid, accesstype,
                                     templatename, extratemplateargs)
 
-    def sendShareResourceEmail(self, user, resourcetype, resourceid, accesstype):
+    def sendShareResourceEmail(self, user, resourcetype, resource, accesstype):
         """
         Send an email to a registered users to inform a vmachine, cloudspace, account management
         has been shared with them
@@ -315,16 +315,16 @@ class cloudapi_users(BaseActor):
         """
         sendAccessEmails = True
         if resourcetype.lower() == 'account':
-            account = self.models.account.get(resourceid)
+            account = resource
             sendAccessEmails = account.sendAccessEmails
         elif resourcetype.lower() == 'cloudspace':
-            cloudspace = self.models.cloudspace.get(resourceid)
-            account = self.models.account.get(cloudspace.accountId)
+            cloudspace = resource
+            account = cloudspace.account
             sendAccessEmails = account.sendAccessEmails
         elif resourcetype.lower() == 'machine':
-            machine = self.models.vmachine.get(resourceid)
-            cloudspace = self.models.cloudspace.get(machine.cloudspaceId)
-            account = self.models.account.get(cloudspace.accountId)
+            machine = resource
+            cloudspace = machine.cloudspace
+            account = cloudspace.account
             sendAccessEmails = account.sendAccessEmails
 
         if not sendAccessEmails:
@@ -332,18 +332,18 @@ class cloudapi_users(BaseActor):
         templatename = 'invite_internal_users'
         extratemplateargs = {'username': user['id'], 'activated': user['active']}
         if user['emails']:
-            return self._sendShareEmail(user['emails'][0], resourcetype, resourceid, accesstype,
+            return self._sendShareEmail(user['emails'][0], resourcetype, resource, accesstype,
                                         templatename, extratemplateargs)
         return True
 
-    def _sendShareEmail(self, emailaddress, resourcetype, resourceid, accesstype, templatename,
+    def _sendShareEmail(self, emailaddress, resourcetype, resource, accesstype, templatename,
                         extratemplateargs=None):
         """
 
         :param emailaddress: emailaddress of the registered user
         :param resourcetype: the type of the resource that will be shared (account,
                              cloudspace, vmachine)
-        :param resourceid: the id of the resource that will be shared
+        :param resource: the object of the resource that will be shared
         :param accesstype: 'R' for read only access, 'RCX' for Write access, 'ARCXDU' for admin
         :param templatename: name of the template to be used for sending the email (templates are
             located under cloudbroker/email/users/)
@@ -351,18 +351,8 @@ class cloudapi_users(BaseActor):
         :return: True if email was was successfully sent
         """
         # Build up message subject, body and send it
-        fromaddr = self.hrd.get('instance.openvcloud.supportemail')
+        fromaddr = self.config.get('supportemail')
         toaddrs = [emailaddress]
-
-        if resourcetype.lower() == 'account':
-            accountobj = self.models.account.get(resourceid)
-            resourcename = accountobj.name
-        elif resourcetype.lower() == 'cloudspace':
-            cloudspaceobj = self.models.cloudspace.get(resourceid)
-            resourcename = cloudspaceobj.name
-        elif resourcetype.lower() == 'machine':
-            machineobj = self.models.vmachine.get(resourceid)
-            resourcename = machineobj.name
 
         if set(accesstype) == set('ARCXDU'):
             accessrole = 'Admin'
@@ -377,8 +367,8 @@ class cloudapi_users(BaseActor):
         args = {
             'email': emailaddress,
             'resourcetype': resourcetype,
-            'resourcename': resourcename,
-            'resourceid': resourceid,
+            'resourcename': resource.name,
+            'resourceid': str(resource.id),
             'accessrole': accessrole,
             'portalurl': j.apps.cloudapi.locations.getUrl(),
             'emailaddress': emailaddress
@@ -387,10 +377,10 @@ class cloudapi_users(BaseActor):
         if extratemplateargs:
             args.update(extratemplateargs)
 
-        subject = j.core.portal.active.templates.render(
-            'cloudbroker/email/users/%s.subject.txt' % templatename, **args)
-        body = j.core.portal.active.templates.render(
-            'cloudbroker/email/users/%s.html' % templatename, **args)
+        subject = j.portal.tools.server.active.templates.render(
+            'cloudapi/email/users/%s.subject.txt' % templatename, **args)
+        body = j.portal.tools.server.active.templates.render(
+            'cloudapi/email/users/%s.html' % templatename, **args)
 
         j.clients.email.send(toaddrs, fromaddr, subject, body)
 
@@ -443,7 +433,7 @@ class cloudapi_users(BaseActor):
 
         groups = ['user']
         emails = [emailaddress]
-        created = j.core.portal.active.auth.createUser(username, password, emails, groups,
+        created = j.portal.tools.server.active.auth.createUser(username, password, emails, groups,
                                                        None, protected=True)
         if created:
             # Check all shared resources invites and update invited users to CONFIRMED status with

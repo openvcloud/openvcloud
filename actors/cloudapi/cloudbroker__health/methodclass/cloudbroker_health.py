@@ -14,7 +14,7 @@ class cloudbroker_health(object):
         """
         resp = {}
         try:
-            dbstate = j.core.portal.active.osis.getStatus()
+            dbstate = j.portal.tools.server.active.osis.getStatus()
             resp['mongodb'] = dbstate['mongodb']
             resp['influxdb'] = dbstate['influxdb']
         except Exception:

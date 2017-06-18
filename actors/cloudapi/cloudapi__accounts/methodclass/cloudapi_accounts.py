@@ -19,48 +19,51 @@ class cloudapi_accounts(BaseActor):
         :param accesstype: 'R' for read only access, 'RCX' for Write and 'ARCXDU' for Admin
         :return True if user was added successfully
         """
+        account = self._get(accountId)
         user = self.cb.checkUser(userId, activeonly=False)
         if not user:
             raise exceptions.NotFound("User is not registered on the system")
         else:
-            # Replace email address with ID
-            userId = user['id']
+            # Replace email address with name
+            userId = user['name']
 
-        self._addACE(accountId, userId, accesstype, userstatus='CONFIRMED')
+        self._addACE(account, userId, accesstype, userstatus='CONFIRMED')
         try:
-            j.apps.cloudapi.users.sendShareResourceEmail(user, 'account', accountId, accesstype)
+            j.apps.cloudapi.users.sendShareResourceEmail(user, 'account', account, accesstype)
             return True
         except:
             self.deleteUser(accountId, userId, recursivedelete=False)
             raise
 
-    def _addACE(self, accountId, userId, accesstype, userstatus='CONFIRMED'):
+    def _get(self, accountId):
+        account = self.models.Account.get(accountId)
+        if not account:
+            raise exceptions.NotFound('Account does not exist')
+        return account
+
+    def _addACE(self, account, userId, accesstype, userstatus='CONFIRMED'):
         """
         Add a new ACE to the ACL of the account
 
-        :param accountId: id of the account
+        :param account: account object
         :param userId: userid/email for registered users or emailaddress for unregistered users
         :param accesstype: 'R' for read only access, 'RCX' for Write and 'ARCXDU' for Admin
         :param userstatus: status of the user (CONFIRMED or INVITED)
         :return True if ACE was added successfully
         """
-        accountId = int(accountId)
-        if not self.models.account.exists(accountId):
-            raise exceptions.NotFound('Account does not exist')
 
         self.cb.isValidRole(accesstype)
-        account = self.models.account.get(accountId)
         for ace in account.acl:
             if ace.userGroupId == userId:
                 raise exceptions.BadRequest('User already has access rights to this account')
 
-        acl = account.new_acl()
-        acl.userGroupId = userId
-        acl.type = 'U'
-        acl.right = accesstype
-        acl.status = userstatus
-        self.models.account.updateSearch({'id': accountId},
-                                         {'$push': {'acl': acl.obj2dict()}})
+        ace = self.models.ACE(
+            userGroupId=userId,
+            type='U',
+            right=accesstype,
+            status=userstatus
+        )
+        account.update(add_to_set__acl=ace)
         return True
 
     @authenticator.auth(acl={'account': set('U')})
@@ -73,12 +76,8 @@ class cloudapi_accounts(BaseActor):
         :param accesstype: 'R' for read only access, 'RCX' for Write and 'ARCXDU' for Admin
         :return True if user access was updated successfully
         """
-        accountId = int(accountId)
-        if not self.models.account.exists(accountId):
-            raise exceptions.NotFound('Account does not exist')
-
+        account = self._get(accountId)
         self.cb.isValidRole(accesstype)
-        account = self.models.account.get(accountId)
         for ace in account.acl:
             if ace.userGroupId == userId:
                 if not self.cb.isaccountuserdeletable(ace, account.acl):
@@ -90,6 +89,10 @@ class cloudapi_accounts(BaseActor):
 
         self.models.account.updateSearch({'id': accountId, 'acl.userGroupId': userId},
                                          {'$set': {'acl.$.right': accesstype}})
+
+        account.update(pull__acl=ace)
+        ace.right = accesstype
+        account.update(add_to_set__acl=ace)
         return True
 
     def create(self, name, access, maxMemoryCapacity=None, maxVDiskCapacity=None,
@@ -126,7 +129,7 @@ class cloudapi_accounts(BaseActor):
         :param accountId: id of the account
         :return dict with the account details
         """
-        account = self.models.Account.get(accountId).to_dict()
+        account = self._get(accountId).to_dict()
 
         # Filter the acl (after removing the selected user) to only have admins
         admins = list(filter(lambda a: set(a['right']) == set('ARCXDU'), account['acl']))
@@ -164,8 +167,7 @@ class cloudapi_accounts(BaseActor):
                                 and machines
         :return True if user access was revoked from account
         """
-        accountId = int(accountId)
-        account = self.models.account.get(accountId)
+        account = self._get(accountId)
         for ace in account.acl:
             if ace.userGroupId == userId:
                 if not self.cb.isaccountuserdeletable(ace, account.acl):
@@ -177,15 +179,17 @@ class cloudapi_accounts(BaseActor):
 
         self.models.account.updateSearch({'id': accountId},
                                          {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
+        ace = ace.to_dict()
+        ace.pop('right')
+        account.update(pull__acl=ace)
 
         if recursivedelete:
             # Delete user accessrights from owned cloudspaces
-            self.models.cloudspace.updateSearch({'accountId': accountId},
-                                                {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
-            for cloudspace in self.models.cloudspace.search({'accountId': accountId})[1:]:
+            cloudspaces = self.models.Cloudspace.objects(account=account).only('id')
+            cloudspaces.update(pull__acl=ace)
+            for cloudspace in cloudspaces:
                 # Delete user accessrights from related machines (part of owned cloudspaces)
-                self.models.vmachine.updateSearch({'cloudspaceId': cloudspace['id']},
-                                                  {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
+                self.models.VMachine.objects(cloudspace=cloudspace).update(pull__acl=ace)
         return True
 
     def list(self, **kwargs):

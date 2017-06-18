@@ -149,13 +149,13 @@ h3. Users Access
 {{action: id:'action-GrantUserAccess' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Grant User Access'}}
 ||User Name||E-Mail||ACL||Status||Revoke Access||
 {% for user in users -%}
-    | {%if user.userstatus!='INVITED' %} [${user.name}|/CBGrid/user?id=${user.name}] {%else%} ${user.name} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.id}' class:'glyphicon glyphicon-remove'}}|
+    | {%if user.userstatus!='INVITED' %} [${user.name}|/CBGrid/user?id=${user.ud}] {%else%} ${user.name} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.name}' class:'glyphicon glyphicon-remove'}}|
 {% endfor %}
 
 h3. Cloud Spaces
 {{action: id:'create_space' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Cloud Space'}}
 
-{{actions: gridbinding:'table_cloudbroker_cloudspace cloudspaceIds'
+{{actions: gridbinding:'table_cloudbroker_Cloudspace cloudspaceIds'
 - display: Delete Cloud Spaces
   action: /restmachine/cloudbroker/cloudspace/destroyCloudSpaces
   reload: false

@@ -6,7 +6,7 @@ def main(j, args, params, tags, tasklet):
     width = args.getTag('width')
     height = args.getTag('height')
     result = "{{jgauge width:%(width)s id:%(id)s height:%(height)s val:%(running)s start:0 end:%(total)s}}"
-    ac = j.clients.osis.getCategory(j.core.portal.active.osis, 'system', 'user')
+    ac = j.clients.osis.getCategory(j.portal.tools.server.active.osis, 'system', 'user')
     total = ac.count()
     query = {'active': True}
     if gid:

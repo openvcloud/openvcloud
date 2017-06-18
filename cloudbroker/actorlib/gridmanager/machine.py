@@ -59,7 +59,7 @@ class MachineManager(BaseManager):
         self.client.nodes.ResumeVM({}, nodeid=nodeId, vmid='vm-{}'.format(machineId))
 
     def status(self, machineId, nodeId):
-        return self.client.nodes.StatusVM({}, nodeid=nodeId, vmid='vm-{}'.format(machineId)).json()['status']
+        return self.client.nodes.GetVM(nodeid=nodeId, vmid='vm-{}'.format(machineId)).json()['status']
 
     def destroy(self, machineId, nodeId):
         return self.client.nodes.DeleteVM(nodeid=nodeId, vmid='vm-{}'.format(machineId))

@@ -14,9 +14,9 @@ def main(j, args, params, tags, tasklet):
         filters[tag] = val
 
     fields = [
-        {'id': 'id',
-         'name': 'ID',
-         'value': "[%(id)s|/cbgrid/user?id=%(id)s]"},
+        {'id': 'name',
+         'name': 'Name',
+         'value': "[%(name)s|/cbgrid/user?id=%(id)s]"},
         {'id': 'emails',
          'name': 'Email',
          'value': 'emails'},

@@ -31,8 +31,8 @@ h2. Virtual Machine: ${vmachine.name}
 h3. Users Access
 {{action: id:'action-GrantUserAccess' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Grant User Access'}}
 ||User Name||E-Mail||ACL||Status||Revoke Access||
-{% for user in vmachine.users -%}
-    | {%if user.userstatus!='INVITED' %} [${user.id}|/CBGrid/user?id=${user.name}] {%else%} ${user.name} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{% if user.accessUserType == 'acc' %} User access via account [page |account?id=${vmachine.accountId}] {% elif user.accessUserType == 'cl' %} User access via cloud space [page |cloud space?id=${vmachine.cloudspaceId}] {% else %} {{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.name}' class:'glyphicon glyphicon-remove'}} {% endif %}|
+{% for user in users -%}
+    | {%if user.userstatus!='INVITED' %} [${user.name}|/CBGrid/user?id=${user.id}] {%else%} ${user.name} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{% if user.accessUserType == 'acc' %} User access via account [page |account?id=${vmachine.cloudspace.account.id}] {% elif user.accessUserType == 'cl' %} User access via cloud space [page |cloud space?id=${vmachine.cloudspace.id}] {% else %} {{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.name}' class:'glyphicon glyphicon-remove'}} {% endif %}|
 {% endfor %}
 
 h3. NICs
@@ -72,7 +72,7 @@ h3. Port Forwards
 {% endfor %}
 
 h3. Audits
-{{grid.audits machineId:${vmachine.id}}}
+{{audits machineId:${vmachine.id}}}
 
 {% else %}
 No Virtual Machine found

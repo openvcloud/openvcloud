@@ -39,44 +39,43 @@ class cloudapi_cloudspaces(BaseActor):
         if not user:
             raise exceptions.NotFound("User is not registered on the system")
         else:
-            # Replace email address with ID
-            userId = user['id']
+            # Replace email address with name
+            userId = user.name
+        cloudspace = self.cb.cloudspace.get(cloudspaceId)
 
-        self._addACE(cloudspaceId, userId, accesstype, userstatus='CONFIRMED')
+        self._addACE(cloudspace, userId, accesstype, userstatus='CONFIRMED')
         try:
-            j.apps.cloudapi.users.sendShareResourceEmail(user, 'cloudspace', cloudspaceId, accesstype)
+            j.apps.cloudapi.users.sendShareResourceEmail(user, 'cloudspace', cloudspace, accesstype)
             return True
         except:
             self.deleteUser(cloudspaceId, userId, recursivedelete=False)
             raise
 
-    def _addACE(self, cloudspaceId, userId, accesstype, userstatus='CONFIRMED'):
+    def _addACE(self, cloudspace, userId, accesstype, userstatus='CONFIRMED'):
         """
         Add a new ACE to the ACL of the cloudspace
 
-        :param cloudspaceId: id of the cloudspace
+        :param cloudspace: cloudspace object
         :param userId: userid/email for registered users or emailaddress for unregistered users
         :param accesstype: 'R' for read only access, 'RCX' for Write and 'ARCXDU' for Admin
         :param userstatus: status of the user (CONFIRMED or INVITED)
         :return True if ACE was added successfully
         """
         self.cb.isValidRole(accesstype)
-        cloudspaceId = int(cloudspaceId)
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        cloudspaceacl = authenticator.auth().getCloudspaceAcl(cloudspaceId)
+        cloudspaceacl = authenticator.auth().getCloudspaceAcl(cloudspace)
         if userId in cloudspaceacl:
             raise exceptions.BadRequest('User already has access rights to this cloudspace')
 
-        ace = cloudspace.new_acl()
-        ace.userGroupId = userId
-        ace.type = 'U'
-        ace.right = accesstype
-        ace.status = userstatus
-        self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                            {'$push': {'acl': ace.obj2dict()}})
+        ace = self.models.ACE(
+            userGroupId=userId,
+            type='U',
+            right=accesstype,
+            status=userstatus
+        )
+        cloudspace.update(add_to_set__acl=ace)
         return True
 
-    def _updateACE(self, cloudspaceId, userId, accesstype, userstatus):
+    def _updateACE(self, cloudspace, userId, accesstype, userstatus):
         """
         Update an existing ACE in the ACL of a cloudspace
 
@@ -87,9 +86,7 @@ class cloudapi_cloudspaces(BaseActor):
         :return True if ACE was successfully updated, False if no update is needed
         """
         self.cb.isValidRole(accesstype)
-        cloudspaceId = int(cloudspaceId)
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        cloudspace_acl = authenticator.auth().getCloudspaceAcl(cloudspaceId)
+        cloudspace_acl = authenticator.auth().getCloudspaceAcl(cloudspace)
         if userId in cloudspace_acl:
             useracl = cloudspace_acl[userId]
         else:
@@ -98,23 +95,21 @@ class cloudapi_cloudspaces(BaseActor):
         if 'account_right' in useracl and set(accesstype) == set(useracl['account_right']):
             # No need to add any access rights as same rights are inherited
             # Remove cloudspace level access rights if present, cleanup for backwards comparability
-            self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                                {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
+            cloudspace.update(pull__acl={'type': 'U', 'userGroupId': userId})
             return False
         # If user has higher access rights on owning account level, then do not update
         elif 'account_right' in useracl and set(accesstype).issubset(set(useracl['account_right'])):
             raise exceptions.Conflict('User already has a higher access level to owning account')
         else:
             # grant higher access level
-            ace = cloudspace.new_acl()
-            ace.userGroupId = userId
-            ace.type = 'U'
-            ace.right = accesstype
-            ace.status = userstatus
-            self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                                {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
-            self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                                {'$push': {'acl': ace.obj2dict()}})
+            ace = self.models.ACE(
+                userGroupId=userId,
+                type='U',
+                right=accesstype,
+                status=userstatus
+            )
+            cloudspace.update(pull__acl={'type': 'U', 'userGroupId': userId})
+            cloudspace.update(add_to_set__acl=ace)
         return True
 
     @authenticator.auth(acl={'cloudspace': set('U')})
@@ -128,19 +123,21 @@ class cloudapi_cloudspaces(BaseActor):
         :return True if user access was updated successfully
         """
         # Check if user exists in the system or is an unregistered invited user
-        existinguser = self.systemodel.user.search({'id': userId})[1:]
-        if existinguser:
-            userstatus = 'CONFIRMED'
-        else:
+        cloudspace = self.cb.cloudspace.get(cloudspaceId)
+        user = self.cb.checkUser(userId, activeonly=False)
+        if not user:
             userstatus = 'INVITED'
-        return self._updateACE(cloudspaceId, userId, accesstype, userstatus)
+        else:
+            userstatus = 'CONFIRMED'
+            # Replace email address with name
+            userId = user.name
+        return self._updateACE(cloudspace, userId, accesstype, userstatus)
 
     def _listActiveCloudSpaces(self, accountId):
-        account = self.models.account.get(accountId)
+        account = self.models.Account.get(accountId)
         if account.status == 'DISABLED':
             return []
-        query = {'accountId': accountId, 'status': {'$ne': 'DESTROYED'}}
-        results = self.models.cloudspace.search(query)[1:]
+        results = self.models.Cloudspace.objects(account=account, status__ne='DESTROYED')
         return results
 
     def validate_name(self, account, name):
@@ -244,6 +241,8 @@ class cloudapi_cloudspaces(BaseActor):
 
         # deploy async.
         gevent.spawn(self.deploy, cloudspaceId=cs.id, **kwargs)
+        ctx = kwargs['ctx']
+        ctx.env['tags'] += 'cloudspaceId:{}'.format(cs.id)
 
         return str(cs.id)
 
@@ -373,18 +372,18 @@ class cloudapi_cloudspaces(BaseActor):
                                 and machines
         :return True if user access was revoked from cloudspace
         """
-        result = self.models.cloudspace.updateSearch({'id': cloudspaceId},
-                                                     {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
+
+        cloudspace = self.cb.cloudspace.get(cloudspaceId)
+        ace = {'type': 'U', 'userGroupId': userId}
+        result = cloudspace.update(full_result=True, pull__acl=ace)
         if result['nModified'] == 0:
             raise exceptions.NotFound('User "%s" does not have access on the cloudspace' % userId)
 
-        result = self.models.cloudspace.updateSearch({'id': cloudspaceId},
-                                                     {'$set': {'updateTime': int(time.time())}})
+        cloudspace.update(updateTime=int(time.time()))
 
         if recursivedelete:
             # Delete user accessrights from related machines (part of owned cloudspaces)
-            self.models.vmachine.updateSearch({'cloudspaceId': cloudspaceId},
-                                              {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
+            self.models.VMachine.objects(cloudspace=cloudspace).update(pull__acl=ace)
         return True
 
     def list(self, **kwargs):

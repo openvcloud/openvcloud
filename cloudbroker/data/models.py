@@ -218,7 +218,7 @@ class VMachine(ModelBase):
     nics = fields.EmbeddedDocumentListField(Nic)
     referenceId = fields.StringField()
     accounts = fields.EmbeddedDocumentListField(VMAccount)
-    status = fields.StringField(choices=['HALTED', 'INIT', 'RUNNING', 'PAUSED', 'DESTROYED'])
+    status = fields.StringField(choices=['HALTED', 'INIT', 'RUNNING', 'STARTING', 'PAUSED', 'DESTROYED'])
     type = fields.StringField()
     hostName = fields.StringField()
     cpus = fields.IntField()

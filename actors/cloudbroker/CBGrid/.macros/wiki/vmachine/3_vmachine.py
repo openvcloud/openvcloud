@@ -1,7 +1,3 @@
-try:
-    import ujson as json
-except Exception:
-    import json
 from js9 import j
 
 
@@ -23,6 +19,7 @@ def generateUsersList(obj, accessUserType, users):
             if userobj:
                 user = userobj.to_dict()
                 user['userstatus'] = ace.status
+                user['id'] = userobj.id
             elif ace.status == 'INVITED':
                 user = dict()
                 user['name'] = ace.userGroupId
@@ -55,9 +52,9 @@ def main(j, args, params, tags, tasklet):
     users = list()
     users = generateUsersList(machine.cloudspace.account, 'acc', users)
     users = generateUsersList(machine.cloudspace, 'cl', users)
-    machine.users = generateUsersList(machine, 'vm', users)
+    users = generateUsersList(machine, 'vm', users)
 
-    args.doc.applyTemplate({'vmachine': machine}, False)
+    args.doc.applyTemplate({'vmachine': machine, 'users': users}, False)
     return params
 
 

@@ -2,6 +2,7 @@ from js9 import j
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib import enums, network
 from .gridmanager.client import getGridClient
+from mongoengine.queryset.visitor import Q
 from .netmgr import NetManager
 import netaddr
 import uuid
@@ -142,7 +143,7 @@ class CloudBroker(object):
         networkids = models.NetworkIds.objects(location=location).first()
         if not networkids:
             raise exceptions.ServiceUnavailable("No networkids configured for location")
-        networkids.update(pull__userNetworkIds=networkid, push__freeNetworkIds=networkid)
+        networkids.update(pull__usedNetworkIds=networkid, push__freeNetworkIds=networkid)
         return True
 
     def checkUser(self, username, activeonly=True):
@@ -153,12 +154,12 @@ class CloudBroker(object):
         :param activeonly: only return activated users if set to True
         :return: User if found
         """
-        query = {'$or': [{'id': username}, {'emails': username}]}
+        users = self.syscl.User.objects((Q(name=username) | Q(emails=username)))
         if activeonly:
-            query['active'] = True
-        users = self.syscl.user.search(query)[1:]
-        if users:
-            return users[0]
+            users = users.filter(Q(active=True))
+        user = users.first()
+        if user:
+            return user
         else:
             return None
 
@@ -273,6 +274,13 @@ class CloudSpace(object):
             cloudspace.externalnetworkip = None
         return cloudspace
 
+    def get(self, cloudspaceId):
+        cloudspace = models.Cloudspace.get(cloudspaceId)
+        if not cloudspace:
+            raise exceptions.NotFound("Cloud space with id %s does not exists" % cloudspaceId)
+
+        return cloudspace
+
 
 class Machine(object):
 
@@ -334,7 +342,7 @@ class Machine(object):
         Get a free macaddres in this environment
         result
         """
-        mac = models.Macaddress.objects(location=location).modify(location=location, inc__count=1)
+        mac = models.Macaddress.objects(location=location).modify(upsert=True, location=location, inc__count=1)
         if not mac:
             count = 0
         else:
@@ -501,35 +509,32 @@ class Machine(object):
             metadata = {'admin_pass': admin.password, 'hostname': hostname}
         return {'userdata': json.dumps(userdata), 'metadata': json.dumps(metadata)}
 
-    def start(self, machine, stackId=None):
+    def start(self, machine, stack=None):
         excludelist = []
-        newstackId = stackId
-        imageId = machine.imageId
-        cloudspace = models.cloudspace.get(machine.cloudspaceId)
+        newstack = stack
 
         while True:
-            stack, client = self._getBestClient(machine, cloudspace.gid, newstackId, excludelist, imageId)
+            stack, client = self._getBestClient(machine, machine.cloudspace.location, newstack, excludelist, machine.image)
             try:
                 client.machine.start(machine.id, stack['referenceId'])
                 break
             except Exception as e:
                 eco = j.errorhandler.processPythonExceptionObject(e)
-                self.cb.markProvider(stack['id'], eco)
-                newstackId = 0
-                models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
-                if stackId:
+                self.cb.markProvider(stack, eco)
+                newstack = None
+                machine.modify(status='ERROR')
+                if stack:
                     raise exceptions.ServiceUnavailable('Not enough cpu resources available to provision the requested machine')
                 else:
                     excludelist.append(stack['id'])
-                    newstackId = 0
-                self.cb.clearProvider(stack['id'])
-        models.vmachine.updateSearch({'id': machine.id}, {'$set': {'stackId': stack['id']}})
+                    newstack = None
+                self.cb.clearProvider(stack)
+        machine.modify(stack=stack)
         return machine.id
 
     def stop(self, machine, force=False):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
+        stack = machine.stack
+        client = getGridClient(stack.location, models)
         try:
             if force:
                 client.machine.shutdown(machine.id, stack.referenceId)
@@ -537,8 +542,8 @@ class Machine(object):
                 client.machine.stop(machine.id, stack.referenceId)
         except Exception as e:
             eco = j.errorhandler.processPythonExceptionObject(e)
-            self.cb.markProvider(stack.id, eco)
-            models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
+            self.cb.markProvider(stack, eco)
+            machine.modify(status='ERROR')
             raise
         return machine.id
 
@@ -570,15 +575,13 @@ class Machine(object):
         return {'ipaddress': nodeinfo['ipaddress'], 'port': machineinfo['vnc']}
 
     def pause(self, machine):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
+        client = getGridClient(machine.stack.location, models)
         try:
-            client.machine.pause(machine.id, stack.referenceId)
+            client.machine.pause(machine.id, machine.stack.referenceId)
         except Exception as e:
             eco = j.errorhandler.processPythonExceptionObject(e)
-            self.cb.markProvider(stack.id, eco)
-            models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
+            self.cb.markProvider(machine.stack, eco)
+            machine.modify(status='ERROR')
             raise
         return machine.id
 
@@ -589,26 +592,21 @@ class Machine(object):
         return client.machine.update(machine, stack.referenceId)
 
     def resume(self, machine):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
+        client = getGridClient(machine.stack.location, models)
         try:
-            client.machine.resume(machine.id, stack.referenceId)
+            client.machine.resume(machine.id, machine.stack.referenceId)
         except Exception as e:
             eco = j.errorhandler.processPythonExceptionObject(e)
-            self.cb.markProvider(stack.id, eco)
-            models.vmachine.updateSearch({'id': machine.id}, {'$set': {'status': 'ERROR'}})
+            self.cb.markProvider(machine.stack, eco)
+            machine.modify(status='ERROR')
             raise
         return machine.id
 
     def destroy(self, machine):
-        stackId = machine.stackId
-        if stackId:
-            stack = models.stack.get(stackId)
-            client = getGridClient(stack.gid, models)
-            client.machine.destroy(machine.id, stack.referenceId)
-        for diskId in machine.disks:
-            disk = models.disk.get(diskId)
+        if machine.stack:
+            client = getGridClient(machine.stack.location, models)
+            client.machine.destroy(machine.id, machine.stack.referenceId)
+        for disk in machine.disks:
             client.storage.deleteVolume(disk)
 
 # not api not implemented use start and stop instead
@@ -628,13 +626,9 @@ class Machine(object):
     #     return machine.id
 
     def status(self, machine):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
-        status = client.machine.status(machine.id, stack.refrenceId)
-        models.vmachine.updateSearch({'id': machine.id},
-                                     {'$set': {'status': getattr(enums.MachineStatus, status.capitalize())}})
-        return status
+        client = getGridClient(machine.stack.location, models)
+        status = client.machine.status(machine.id, machine.stack.referenceId)
+        return getattr(enums.MachineStatus, status.lower())
 
     def rollback(self, machine, epoch):
         stackId = machine.stackId

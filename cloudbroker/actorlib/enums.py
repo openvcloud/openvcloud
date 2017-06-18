@@ -1,6 +1,7 @@
 class MachineStatus(object):
     _ENUMS = {'vxlan': {'running': 'RUNNING',
                         'halted': 'HALTED',
+                        'starting': 'STARTING',
                         'paused': 'PAUSED',
                         'halting': 'HALTING',
                         'migrating': 'MIGRATING'}}

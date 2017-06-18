@@ -4,6 +4,7 @@ from cloudbroker.actorlib import authenticator, enums, network
 from cloudbroker.actorlib.baseactor import BaseActor
 import time
 import re
+import os
 import requests
 import gevent
 
@@ -16,8 +17,8 @@ class RequireState(object):
 
     def __call__(self, func):
         def wrapper(s, **kwargs):
-            machineId = int(kwargs['machineId'])
-            if not s.models.vmachine.exists(machineId):
+            machineId = kwargs['machineId']
+            if not s.models.VMachine.exists(machineId):
                 raise exceptions.NotFound("Machine with id %s was not found" % machineId)
 
             machine = s.get(machineId)
@@ -39,13 +40,6 @@ class cloudapi_machines(BaseActor):
         self.network = network.Network(self.models)
         self.netmgr = self.cb.netmgr
 
-    def _updatestatus(self, machineId, actiontype, newstatus):
-        """
-        Update status and log action.
-        """
-        self.models.vmachine.updateSearch({'id': machineId}, {'$set': {'status': newstatus}})
-        j.logger.log(actiontype.capitalize(), category='machine.history.ui', tags=str(machineId))
-
     @authenticator.auth(acl={'machine': set('X')})
     def start(self, machineId, **kwargs):
         """
@@ -53,12 +47,12 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self.models.VMachine.get(machineId)
-        if "start" in machine.tags.split(" "):
+        machine = self._get(machineId)
+        if machine.tags and "start" in machine.tags.split(" "):
             j.apps.cloudbroker.machine.untag(machineId=machine.id, tagName="start")
         if machine.status not in ['RUNNING', 'PAUSED']:
             self.cb.machine.start(machine)
-            self._updatestatus(machineId, 'start', enums.MachineStatus.running)
+            machine.update(status=enums.MachineStatus.running)
         return True
 
     @authenticator.auth(acl={'machine': set('X')})
@@ -68,10 +62,10 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self.models.VMachine.get(machineId)
+        machine = self._get(machineId)
         if machine.status not in ['HALTED']:
             self.cb.machine.stop(machine, force)
-            self._updatestatus(machineId, 'stop', enums.MachineStatus.halted)
+            machine.update(status=enums.MachineStatus.halted)
         return True
 
     @authenticator.auth(acl={'machine': set('X')})
@@ -81,14 +75,14 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self.models.VMachine.get(machineId)
+        machine = self._get(machineId)
         if machine.status in ['HALTED']:
             self.cb.machine.start(machine)
         elif machine.status in ['RUNNING', 'PAUSED']:
             self.cb.machine.stop(machine)
             self.cb.machine.start(machine)
 
-        self._updatestatus(machineId, 'soft_reboot', enums.MachineStatus.running)
+        machine.update(status=enums.MachineStatus.running)
         return True
 
     @authenticator.auth(acl={'machine': set('X')})
@@ -98,14 +92,14 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self.models.VMachine.get(machineId)
+        machine = self._get(machineId)
         if machine.status in ['HALTED']:
             self.cb.machine.start(machine)
         elif machine.status in ['RUNNING', 'PAUSED']:
             self.cb.machine.stop(machine, force=True)
             self.cb.machine.start(machine)
 
-        self._updatestatus(machineId, 'hard_reboot', enums.MachineStatus.running)
+        machine.update(status=enums.MachineStatus.running)
         return True
 
     @authenticator.auth(acl={'machine': set('X')})
@@ -115,10 +109,12 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self.models.VMachine.get(machineId)
+        machine = self._get(machineId)
         if machine.status in ['RUNNING']:
             self.cb.machine.pause(machine)
-            self._updatestatus(machineId, 'pause', enums.MachineStatus.paused)
+            machine.update(status=enums.MachineStatus.paused)
+        else:
+            raise exceptions.BadRequest("Can only pause a running machine")
         return True
 
     @authenticator.auth(acl={'machine': set('X')})
@@ -128,10 +124,12 @@ class cloudapi_machines(BaseActor):
 
         :param machineId: id of the machine
         """
-        machine = self.models.VMachine.get(machineId)
+        machine = self._get(machineId)
         if machine.status in ['PAUSED']:
             self.cb.machine.resume(machine)
-            self._updatestatus(machineId, 'resume', enums.MachineStatus.running)
+            machine.update(status=enums.MachineStatus.running)
+        else:
+            raise exceptions.BadRequest("Can only resume a suspended machine")
         return True
 
     @authenticator.auth(acl={'cloudspace': set('C')})
@@ -147,10 +145,10 @@ class cloudapi_machines(BaseActor):
         :return int, id of the disk
 
         """
-        machine = self.models.VMachine.get(machineId)
+        machine = self._get(machineId)
         if len(machine.disks) >= 25:
             raise exceptions.BadRequest("Cannot create more than 25 disk on a machine")
-        cloudspace = self.models.cloudspace.get(machine.cloudspaceId)
+        cloudspace = machine.cloudspace
         # Validate that enough resources are available in the CU limits to add the disk
         j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace.id, vdisksize=size)
         disk = j.apps.cloudapi.disks._create(accountId=cloudspace.accountId, gid=cloudspace.gid,
@@ -170,7 +168,7 @@ class cloudapi_machines(BaseActor):
         :param diskId: id of disk to detach
         :return: True if disk was detached successfully
         """
-        machine = self.models.VMachine.get(machineId)
+        machine = self._get(machineId)
         diskId = int(diskId)
         if diskId not in machine.disks:
             return True
@@ -188,26 +186,24 @@ class cloudapi_machines(BaseActor):
         :param diskId: id of disk to attach
         :return: True if disk was attached successfully
         """
-        provider, node, machine = self.cb.getProviderAndNode(machineId)
-        diskId = int(diskId)
-        if diskId in machine.disks:
+        machine = self._get(machineId)
+        if diskId in [str(disk.id) for disk in machine.disks]:
             return True
         if len(machine.disks) >= 25:
             raise exceptions.BadRequest("Cannot attach more than 25 disk to a machine")
-        disk = self.models.disk.get(int(diskId))
-        vmachines = self.models.vmachine.search({'disks': diskId})[1:]
-        if vmachines:
-            if vmachines[0]["cloudspaceId"] != machine.cloudspaceId:
+        disk = self.models.Disk.get(diskId)
+        vmachine = self.models.VMachine.objects(disks=diskId).first()
+        if vmachine:
+            if vmachine.cloudspace.id != machine.cloudspace.id:
                 # Validate that enough resources are available in the CU limits of the new cloudspace to add the disk
                 j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(
                     machine.cloudspaceId, vdisksize=disk.sizeMax, checkaccount=False)
-            self.detachDisk(machineId=vmachines[0]['id'], diskId=diskId)
+            self.detachDisk(machineId=vmachine.id, diskId=diskId)
         else:
             # the disk was not attached to any machines so check if there is enough resources in the cloudspace
             j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(
                 machine.cloudspaceId, vdisksize=disk.sizeMax, checkaccount=False)
-        volume = j.apps.cloudapi.disks.getStorageVolume(disk, provider, node)
-        provider.client.attach_volume(node, volume)
+        j.apps.cloudapi.disks.getStorageVolume(disk)
         machine.disks.append(diskId)
         self.models.vmachine.set(machine)
         return True
@@ -280,8 +276,8 @@ class cloudapi_machines(BaseActor):
             'link': link,
         }
 
-        message = j.core.portal.active.templates.render('cloudbroker/email/users/import_completion.html', **args)
-        subject = j.core.portal.active.templates.render('cloudbroker/email/users/import_completion.subject.txt', **args)
+        message = j.portal.tools.server.active.templates.render('cloudbroker/email/users/import_completion.html', **args)
+        subject = j.portal.tools.server.active.templates.render('cloudbroker/email/users/import_completion.subject.txt', **args)
 
         j.clients.email.send(toaddrs, fromaddr, subject, message, files=None)
 
@@ -299,15 +295,15 @@ class cloudapi_machines(BaseActor):
             'email': emailaddress,
         }
 
-        message = j.core.portal.active.templates.render('cloudbroker/email/users/export_completion.html', **args)
-        subject = j.core.portal.active.templates.render('cloudbroker/email/users/export_completion.subject.txt', **args)
+        message = j.portal.tools.server.active.templates.render('cloudbroker/email/users/export_completion.html', **args)
+        subject = j.portal.tools.server.active.templates.render('cloudbroker/email/users/export_completion.subject.txt', **args)
 
         j.clients.email.send(toaddrs, fromaddr, subject, message, files=None)
 
     def syncImportOVF(self, uploaddata, envelope, cloudspace, name, description, sizeId, callbackUrl, user):
         try:
             error = False
-            userobj = j.core.portal.active.auth.getUserInfo(user)
+            userobj = j.portal.tools.server.active.auth.getUserInfo(user)
 
             vm = self.models.vmachine.new()
             vm.cloudspaceId = cloudspace.id
@@ -383,7 +379,7 @@ class cloudapi_machines(BaseActor):
         try:
             error = False
             diskmapping = list()
-            userobj = j.core.portal.active.auth.getUserInfo(user)
+            userobj = j.portal.tools.server.active.auth.getUserInfo(user)
             disks = self.models.disk.search({'id': {'$in': vm.disks}})[1:]
             for disk in disks:
                 diskmapping.append((j.apps.cloudapi.disks.getStorageVolume(disk, provider),
@@ -516,6 +512,12 @@ class cloudapi_machines(BaseActor):
         :return bool
 
         """
+        machineId = self._create(cloudspaceId, name, description, sizeId, imageId, disksize, datadisks, **kwargs)
+        ctx = kwargs['ctx']
+        ctx.env['tags'] += ' machineId:{}'.format(machineId)
+        return machineId
+
+    def _create(self, cloudspaceId, name, description, sizeId, imageId, disksize, datadisks, stackId=None, **kwargs):
         datadisks = datadisks or []
         cloudspace = self.models.Cloudspace.get(cloudspaceId)
 
@@ -528,7 +530,7 @@ class cloudapi_machines(BaseActor):
                                               size, disksize, datadisks)
         try:
             self.cb.netmgr.update(cloudspace)
-            self.cb.machine.create(machine, cloudspace, image, None)
+            self.cb.machine.create(machine, cloudspace, image, stackId)
         except:
             self.cb.machine.cleanup(machine)
             raise
@@ -544,19 +546,15 @@ class cloudapi_machines(BaseActor):
 
         """
         vmachinemodel = self.models.VMachine.get(machineId)
-        vms = self.models.vmachine.search({'cloneReference': machineId, 'status': {'$ne': 'DESTROYED'}})[1:]
-        if vms:
-            clonenames = ['  * %s' % vm['name'] for vm in vms]
-            raise exceptions.Conflict(
-                "Can not delete a Virtual Machine which has clones.\nExisting Clones Are:\n%s" % '\n'.join(clonenames))
+        # vms = self.models.vmachine.search({'cloneReference': machineId, 'status': {'$ne': 'DESTROYED'}})[1:]
+        # if vms:
+        #     clonenames = ['  * %s' % vm['name'] for vm in vms]
+        #     raise exceptions.Conflict(
+        #         "Can not delete a Virtual Machine which has clones.\nExisting Clones Are:\n%s" % '\n'.join(clonenames))
         self. _detachExternalNetworkFromModel(vmachinemodel)
         if not vmachinemodel.status == 'DESTROYED':
-            vmachinemodel.deletionTime = int(time.time())
-            vmachinemodel.status = 'DESTROYED'
-            self.models.vmachine.set(vmachinemodel)
+            vmachinemodel.modify(status='DESTROYED', deletionTime=int(time.time()))
 
-        tags = str(machineId)
-        j.logger.log('Deleted', category='machine.history.ui', tags=tags)
         try:
             j.apps.cloudapi.portforwarding.deleteByVM(vmachinemodel)
         except Exception as e:
@@ -567,11 +565,16 @@ class cloudapi_machines(BaseActor):
                 berror, message="Failed to delete pf for vm with id %s can not apply config" % machineId)
         self.cb.machine.destroy(vmachinemodel)
 
-        for disk in self.models.disk.search({'id': {'$in': vmachinemodel.disks}})[1:]:
-            disk['status'] = 'DESTROYED'
-            self.models.disk.set(disk)
+        for disk in vmachinemodel.disks:
+            disk.delete()
 
         return True
+
+    def _get(self, machineId):
+        machine = self.models.VMachine.get(machineId)
+        if not machine or machine.status in ['DESTROYED', 'DESTROYING']:
+            raise exceptions.NotFound('Machine %s not found' % machineId)
+        return machine
 
     @authenticator.auth(acl={'machine': set('R')})
     def get(self, machineId, **kwargs):
@@ -582,9 +585,8 @@ class cloudapi_machines(BaseActor):
         result
 
         """
-        machine = self.models.VMachine.get(machineId)
-        if machine.status in ['DESTROYED', 'DESTROYING']:
-            raise exceptions.NotFound('Machine %s not found' % machineId)
+        machine = self._get(machineId)
+        machine.modify(status=self.cb.machine.status(machine))
         locked = False
         storage = sum(disk.size for disk in machine.disks)
         disks = [disk.to_dict() for disk in machine.disks]
@@ -838,12 +840,18 @@ class cloudapi_machines(BaseActor):
         :param size: number of entries to return
         :return: list of the history of the machine
         """
-        provider, node, machine = self.cb.getProviderAndNode(machineId)
-        if machine.status in ['DESTROYED', 'DESTROYING']:
-            raise exceptions.NotFound('Machine %s not found' % machineId)
-        tags = str(machineId)
-        query = {'category': 'machine_history_ui', 'tags': tags}
-        return self.osis_logs.search(query, size=size)[1:]
+        # validate machine exists
+        self._get(machineId)
+        results = []
+        for audit in self.systemodel.Audit.objects(tags__contains='machineId:{}'.format(machineId)):
+            call = os.path.basename(audit.call)
+            if call in ['get', 'getHistory', 'listSnapshots', 'list', 'getConsoleUrl']:
+                continue
+            results.append({
+                'epoch': audit.timestamp,
+                'message': 'User {} called {}'.format(audit.user, call)
+            })
+        return results
 
     @authenticator.auth(acl={'cloudspace': set('X'), 'machine': set('U')})
     def addUser(self, machineId, userId, accesstype, **kwargs):
@@ -855,48 +863,49 @@ class cloudapi_machines(BaseActor):
         :param accesstype: 'R' for read only access, 'RCX' for Write and 'ARCXDU' for Admin
         :return True if user was added successfully
         """
+        machine = self.models.VMachine.get(machineId)
+        if not machine:
+            raise exceptions.NotFound("Could not find VMachine")
         user = self.cb.checkUser(userId, activeonly=False)
         if not user:
             raise exceptions.NotFound("User is not registered on the system")
         else:
             # Replace email address with ID
-            userId = user['id']
+            userId = user.name
 
-        self._addACE(machineId, userId, accesstype, userstatus='CONFIRMED')
+        self._addACE(machine, userId, accesstype, userstatus='CONFIRMED')
         try:
-            j.apps.cloudapi.users.sendShareResourceEmail(user, 'machine', machineId, accesstype)
+            j.apps.cloudapi.users.sendShareResourceEmail(user, 'machine', machine, accesstype)
             return True
         except:
             self.deleteUser(machineId, userId, recursivedelete=False)
             raise
 
-    def _addACE(self, machineId, userId, accesstype, userstatus='CONFIRMED'):
+    def _addACE(self, machine, userId, accesstype, userstatus='CONFIRMED'):
         """
         Add a new ACE to the ACL of the vmachine
 
-        :param:machineId id of the vmachine
+        :param:machine vmachine object
         :param userId: userid for registered users or emailaddress for unregistered users
         :param accesstype: 'R' for read only access, 'W' for Write access
         :param userstatus: status of the user (CONFIRMED or INVITED)
         :return True if ACE was successfully added
         """
         self.cb.isValidRole(accesstype)
-        machineId = int(machineId)
-        vmachine = self.models.vmachine.get(machineId)
-        vmachineacl = authenticator.auth().getVMachineAcl(machineId)
+        vmachineacl = authenticator.auth().getVMachineAcl(machine)
         if userId in vmachineacl:
             raise exceptions.BadRequest('User already has access rights to this machine')
 
-        ace = vmachine.new_acl()
-        ace.userGroupId = userId
-        ace.type = 'U'
-        ace.right = accesstype
-        ace.status = userstatus
-        self.models.vmachine.updateSearch({'id': machineId},
-                                          {'$push': {'acl': ace.obj2dict()}})
+        ace = self.models.ACE(
+            type='U',
+            userGroupId=userId,
+            right=accesstype,
+            status=userstatus
+        )
+        machine.modify(add_to_set__acl=ace)
         return True
 
-    def _updateACE(self, machineId, userId, accesstype, userstatus):
+    def _updateACE(self, machine, userId, accesstype, userstatus):
         """
         Update an existing ACE in the ACL of a machine
 
@@ -907,9 +916,7 @@ class cloudapi_machines(BaseActor):
         :return True if ACE was successfully updated, False if no update is needed
         """
         self.cb.isValidRole(accesstype)
-        machineId = int(machineId)
-        vmachine = self.models.vmachine.get(machineId)
-        vmachine_acl = authenticator.auth().getVMachineAcl(machineId)
+        vmachine_acl = authenticator.auth().getVMachineAcl(machine)
         if userId in vmachine_acl:
             useracl = vmachine_acl[userId]
         else:
@@ -929,20 +936,18 @@ class cloudapi_machines(BaseActor):
                 ('cloudspace_right' in useracl and
                     set(accesstype) == set(useracl['cloudspace_right'])):
             # Remove machine level access rights if present, cleanup for backwards comparability
-            self.models.vmachine.updateSearch({'id': machineId},
-                                              {'$pull': {'userGroupId': userId, 'type': 'U'}})
+            machine.modify(pull__acl={'userGroupId': userId, 'type': 'U'})
             return False
         else:
             # grant higher access level
-            ace = vmachine.new_acl()
-            ace.userGroupId = userId
-            ace.type = 'U'
-            ace.right = accesstype
-            ace.status = userstatus
-            self.models.vmachine.updateSearch({'id': machineId},
-                                              {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
-            self.models.vmachine.updateSearch({'id': machineId},
-                                              {'$push': {'acl': ace.obj2dict()}})
+            machine.modify(pull__acl={'userGroupId': userId, 'type': 'U'})
+            ace = self.models.ACE(
+                type='U',
+                userGroupId=userId,
+                right=accesstype,
+                status=userstatus
+            )
+            machine.modify(add_to_set__acl=ace)
         return True
 
     @authenticator.auth(acl={'cloudspace': set('X'), 'machine': set('U')})
@@ -954,9 +959,17 @@ class cloudapi_machines(BaseActor):
         :param userId: id or emailaddress of the user to remove
         :return True if user access was revoked from machine
         """
+        machine = self.models.VMachine.get(machineId)
+        if not machine:
+            raise exceptions.NotFound("Could not find VMachine")
+        user = self.cb.checkUser(userId, activeonly=False)
+        if not user:
+            raise exceptions.NotFound("User is not registered on the system")
+        else:
+            # Replace email address with ID
+            userId = user.name
 
-        result = self.models.vmachine.updateSearch({'id': machineId},
-                                                   {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
+        result = machine.update(full_result=True, pull__acl={'userGroupId': userId, 'type': 'U'})
         if result['nModified'] == 0:
             # User was not found in access rights
             raise exceptions.NotFound('User "%s" does not have access on the machine' % userId)
@@ -1059,10 +1072,10 @@ class cloudapi_machines(BaseActor):
 
     def _detachExternalNetworkFromModel(self, vmachine):
         for nic in vmachine.nics:
-            nicdict = nic.obj2dict()
-            if 'type' not in nicdict or nicdict['type'] != 'PUBLIC':
+            if nic.type != 'PUBLIC':
                 continue
             vmachine.nics.remove(nic)
+            vmachine.nics.save()
             self.models.vmachine.set(vmachine)
             tags = j.core.tags.getObject(nic.params)
             self.network.releaseExternalIpAddress(int(tags.tags.get('externalnetworkId')), nic.ipAddress)

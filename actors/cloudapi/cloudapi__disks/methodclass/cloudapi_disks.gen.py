@@ -13,11 +13,11 @@ class cloudapi_disks(j.tools.code.classGetBase()):
         #cloudapi_disks_osis.__init__(self)
 
 
-    def create(self, accountId, gid, name, description, iops, size=10, type='B', ssdSize=0, **kwargs):
+    def create(self, accountId, locationId, name, description, iops, size=10, type='B', ssdSize=0, **kwargs):
         """
         Create a disk
         param:accountId id of the account
-        param:gid id of the grid
+        param:locationId id of the grid
         param:name name of disk
         param:description description of disk
         param:size size in GBytes, default is 0 default=10

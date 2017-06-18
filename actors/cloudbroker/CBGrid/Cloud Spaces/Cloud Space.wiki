@@ -24,7 +24,7 @@ h2. Cloud Space: ${name}
     label: Name
     placeholder:
     type: text
-    default: '${name}'
+    default: '${cloudspace.name}'
 
   - name: maxMemoryCapacity
     label: Max Memory Capacity (GB)
@@ -76,8 +76,8 @@ h2. Cloud Space: ${name}
   action: /restmachine/cloudbroker/cloudspace/destroy
   reload: false
   data:
-   cloudspaceId: $$id
-   accountId: ${accountId}
+   cloudspaceId: ${cloudspace.id}
+   accountId: ${cloudspace.account.id}
   input:
   - reason
 
@@ -85,14 +85,14 @@ h2. Cloud Space: ${name}
 - display: Disable Cloud Space
   action: /restmachine/cloudapi/cloudspaces/disable
   data:
-   cloudspaceId: $$id
+   cloudspaceId: ${cloudspace.id}
   input:
   - reason
 {% else %}
 - display: Enable Cloud Space
   action: /restmachine/cloudapi/cloudspaces/enable
   data:
-   cloudspaceId: $$id
+   cloudspaceId: ${cloudspace.id}
   input:
   - reason
 {% endif %}
@@ -101,7 +101,7 @@ h2. Cloud Space: ${name}
   hide: true
   action: /restmachine/cloudbroker/cloudspace/addUser
   data:
-   cloudspaceId: $$id
+   cloudspaceId: ${cloudspace.id}
   input:
   - name: username
     label: Username or email address (an invitation will be sent to unregistered emails)
@@ -121,7 +121,7 @@ h2. Cloud Space: ${name}
   action: /restmachine/cloudbroker/cloudspace/deleteUser
   hide: true
   data:
-   cloudspaceId: $$id
+   cloudspaceId: ${cloudspace.id}
   input:
   - name: recursivedelete
     type: dropdown
@@ -137,23 +137,7 @@ h2. Cloud Space: ${name}
   hide: true
   reload: false
   data:
-   cloudspaceId: $$id
-
-#- display: Add Extra IP
-#  action: /restmachine/cloudbroker/cloudspace/addExtraIP
-#  data:
-#   cloudspaceId: $$id
-#  input:
-#  - ipaddress
-#  - reason
-
-#- display: Remove IP
-#  action: /restmachine/cloudbroker/cloudspace/removeIP
-#  data:
-#   cloudspaceId: $$id
-#  input:
-#  - ipaddress
-#  - reason
+   cloudspaceId: ${cloudspace.id}
 
 }}
 
@@ -187,8 +171,8 @@ h3. Cloud Resource Limits
 h3. Users Access
 {{action: id:'action-GrantUserAccess' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Grant User Access'}}
 ||User Name||E-Mail||ACL||Status||Revoke Access||
-{% for user in cloudspace.users -%}
-    | {%if user.userstatus!='INVITED' %} [${user.id}|/CBGrid/user?id=${user.id}] {%else%} ${user.id} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{% if user.accessUserType == 'acc' %} User access via account [page |account?id=${accountId}] {% else %} {{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.id}' class:'glyphicon glyphicon-remove'}} {% endif %}|
+{% for user in users -%}
+    | {%if user.userstatus!='INVITED' %} [${user.name}|/CBGrid/user?id=${user.id}] {%else%} ${user.name} {% endif %} |${", ".join(user.emails)}|${user.acl}|${user.userstatus if user.userstatus else 'N/A'}|{% if user.accessUserType == 'acc' %} User access via account [page |account?id=${cloudspace.account.id}] {% else %} {{action deleterow:true id:'action-RevokeUserAccess' data-username:'${user.id}' class:'glyphicon glyphicon-remove'}} {% endif %}|
 {% endfor %}
 
 h3. Port Forwards
@@ -209,7 +193,7 @@ h3. Virtual Machines
 {{action id:'createmachine' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add Virtual Machine'}}
 {{action id:'importmachine' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Import Virtual Machine'}}
 
-{{actions: gridbinding:'table_cloudbroker_vmachine machineIds'
+{{actions: gridbinding:'table_cloudbroker_VMachine machineIds'
 - display: Start Machines
   action: /restmachine/cloudbroker/machine/startMachines
   reload: false
@@ -238,7 +222,7 @@ h3. Virtual Machines
 {{vmachines cloudspaceid:$$id}}
 
 h3. Audits
-{{grid.audits cloudspaceId:$$id}}
+{{audits cloudspaceId:$$id}}
 {% else %}
 No Cloud Space found.
 {% endif %}

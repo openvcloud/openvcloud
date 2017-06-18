@@ -2,7 +2,7 @@
 
 h2. Cloud Spaces
 
-{{actions: gridbinding:'table_cloudbroker_cloudspace cloudspaceIds'
+{{actions: gridbinding:'table_cloudbroker_Cloudspace cloudspaceIds'
 - display: Delete Cloud Spaces
   action: /restmachine/cloudbroker/cloudspace/destroyCloudSpaces
   reload: false

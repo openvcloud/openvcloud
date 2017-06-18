@@ -13,22 +13,12 @@ class cloudbroker_cloudspace(BaseActor):
         super(cloudbroker_cloudspace, self).__init__()
         self.network = network.Network(self.models)
 
-    def _getCloudSpace(self, cloudspaceId):
-        cloudspaceId = int(cloudspaceId)
-
-        cloudspaces = self.models.cloudspace.simpleSearch({'id': cloudspaceId})
-        if not cloudspaces:
-            raise exceptions.NotFound('Cloudspace with id %s not found' % (cloudspaceId))
-
-        cloudspace = cloudspaces[0]
-        return cloudspace
-
     @auth(['level1', 'level2', 'level3'])
     def destroy(self, accountId, cloudspaceId, reason, **kwargs):
         """
         Destroys a cloudspacec and its machines, vfws and routeros
         """
-        cloudspace = self._getCloudSpace(cloudspaceId)
+        cloudspace = self.cb.cloudspace.get(cloudspaceId)
 
         ctx = kwargs['ctx']
         ctx.events.runAsync(self._destroy,
@@ -46,13 +36,11 @@ class cloudbroker_cloudspace(BaseActor):
         title = 'Deleting Cloud Space %(name)s' % cloudspace
         try:
             # delete machines
-            machines = self.models.vmachine.search(
-                {'cloudspaceId': cloudspace['id'], 'status': {'$ne': 'DESTROYED'}})[1:]
+            machines = self.models.VMachine.objects(cloudspace=cloudspace, status__ne='DESTROYED')
             for idx, machine in enumerate(sorted(machines, key=lambda m: m['cloneReference'], reverse=True)):
-                machineId = machine['id']
-                if machine['status'] != 'DESTROYED':
+                if machine.status != 'DESTROYED':
                     ctx.events.sendMessage(title, 'Deleting Virtual Machine %s/%s' % (idx + 1, len(machines)))
-                    j.apps.cloudbroker.machine.destroy(machineId, reason)
+                    j.apps.cloudbroker.machine.destroy(machine.id, reason)
         except:
             cloudspace.modify(status=status)
             raise
@@ -77,7 +65,7 @@ class cloudbroker_cloudspace(BaseActor):
 
     def _destroyCloudSpaces(self, cloudspaceIds, reason, ctx):
         for idx, cloudspaceId in enumerate(cloudspaceIds):
-            cloudspace = self._getCloudSpace(cloudspaceId)
+            cloudspace = self.cb.cloudspace.get(cloudspaceId)
             self._destroy(cloudspace, reason, ctx)
 
     @auth(['level1', 'level2', 'level3'])
@@ -88,7 +76,7 @@ class cloudbroker_cloudspace(BaseActor):
         param:cloudspaceId id of the cloudspace
         param:targetNode name of the firewallnode the virtual firewall has to be moved to
         """
-        cloudspace = self.models.cloudspace.get(int(cloudspaceId))
+        cloudspace = self.cb.cloudspace.get(cloudspaceId)
         if cloudspace.status != 'DEPLOYED':
             raise exceptions.BadRequest('Could not move fw for cloudspace which is not deployed')
 
@@ -121,10 +109,6 @@ class cloudbroker_cloudspace(BaseActor):
         Deploy VFW
         param:cloudspaceId id of the cloudspace
         """
-        cloudspaceId = int(cloudspaceId)
-        if not self.models.cloudspace.exists(cloudspaceId):
-            raise exceptions.NotFound('Cloudspace with id %s not found' % (cloudspaceId))
-
         return self.cb.actors.cloudapi.cloudspaces.deploy(cloudspaceId=cloudspaceId)
 
     @auth(['level1', 'level2', 'level3'])
@@ -134,10 +118,6 @@ class cloudbroker_cloudspace(BaseActor):
         Restore the virtual firewall of a cloudspace on an available firewall node
         param:cloudspaceId id of the cloudspace
         """
-        cloudspaceId = int(cloudspaceId)
-        if not self.models.cloudspace.exists(cloudspaceId):
-            raise exceptions.NotFound('Cloudspace with id %s not found' % (cloudspaceId))
-
         self.destroyVFW(cloudspaceId, **kwargs)
         self.cb.actors.cloudapi.cloudspaces.deploy(cloudspaceId=cloudspaceId)
 
@@ -169,14 +149,9 @@ class cloudbroker_cloudspace(BaseActor):
 
     @auth(['level1', 'level2', 'level3'])
     def destroyVFW(self, cloudspaceId, **kwargs):
-        cloudspaceId = int(cloudspaceId)
-        if not self.models.cloudspace.exists(cloudspaceId):
-            raise exceptions.NotFound('Cloudspace with id %s not found' % (cloudspaceId))
-
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
+        cloudspace = self.cb.cloudspace.get(cloudspaceId)
         self.cb.cloudspace.release_resources(cloudspace, False)
-        cloudspace.status = 'VIRTUAL'
-        self.models.cloudspace.set(cloudspace)
+        cloudspace.update(status='VIRTUAL')
         return True
 
     @auth(['level1', 'level2', 'level3'])
@@ -207,7 +182,6 @@ class cloudbroker_cloudspace(BaseActor):
         maxCPUCapacity = resourcelimits['CU_C']
         maxNetworkPeerTransfer = resourcelimits['CU_NP']
         maxNumPublicIP = resourcelimits['CU_I']
-
         return self.cb.actors.cloudapi.cloudspaces.update(cloudspaceId=cloudspaceId, name=name, maxMemoryCapacity=maxMemoryCapacity,
                                              maxVDiskCapacity=maxVDiskCapacity, maxCPUCapacity=maxCPUCapacity,
                                              maxNetworkPeerTransfer=maxNetworkPeerTransfer, maxNumPublicIP=maxNumPublicIP, allowedVMSizes=allowedVMSizes)
@@ -250,13 +224,6 @@ class cloudbroker_cloudspace(BaseActor):
                                                           maxNumPublicIP=maxNumPublicIP, externalnetworkId=externalnetworkId,
                                                           allowedVMSizes=allowedVMSizes)
 
-    def _checkCloudspace(self, cloudspaceId):
-        cloudspaces = self.models.cloudspace.search({'id': cloudspaceId})[1:]
-        if not cloudspaces:
-            raise exceptions.NotFound("Cloud space with id %s does not exists" % cloudspaceId)
-
-        return cloudspaces[0]
-
     @auth(['level1', 'level2', 'level3'])
     def addUser(self, cloudspaceId, username, accesstype, **kwargs):
         """
@@ -267,38 +234,14 @@ class cloudbroker_cloudspace(BaseActor):
         param:accesstype 'R' for read only access, 'W' for Write access
         result bool
         """
-        cloudspace = self._checkCloudspace(cloudspaceId)
-        cloudspaceId = cloudspace['id']
-        user = self.cb.checkUser(username, activeonly=False)
-
-        cloudspaceacl = authenticator.auth().getCloudspaceAcl(cloudspaceId)
-        if username in cloudspaceacl:
-            updated = self.cb.actors.cloudapi.cloudspaces.updateUser(cloudspaceId=cloudspaceId, userId=username, accesstype=accesstype)
-            if not updated:
-                raise exceptions.PreconditionFailed('User already has same access level to owning '
-                                                    'account')
-        elif user:
-            self.cb.actors.cloudapi.cloudspaces.addUser(cloudspaceId=cloudspaceId, userId=username, accesstype=accesstype)
-        else:
-            raise exceptions.NotFound('User with username %s is not found' % username)
-
-        return True
+        return self.cb.actors.cloudapi.cloudspaces.addUser(cloudspaceId=cloudspaceId, userId=username, accesstype=accesstype)
 
     @auth(['level1', 'level2', 'level3'])
     def deleteUser(self, cloudspaceId, username, recursivedelete, **kwargs):
         """
         Delete a user from the account
         """
-        cloudspace = self._checkCloudspace(cloudspaceId)
-        cloudspaceId = cloudspace['id']
-        user = self.cb.checkUser(username)
-        if user:
-            userId = user['id']
-        else:
-            # external user, delete ACE that was added using emailaddress
-            userId = username
-        self.cb.actors.cloudapi.cloudspaces.deleteUser(cloudspaceId=cloudspaceId, userId=userId, recursivedelete=recursivedelete)
-        return True
+        return self.cb.actors.cloudapi.cloudspaces.deleteUser(cloudspaceId=cloudspaceId, userId=username, recursivedelete=recursivedelete)
 
     @auth(['level1', 'level2', 'level3'])
     def deletePortForward(self, cloudspaceId, publicIp, publicPort, proto, **kwargs):

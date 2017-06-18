@@ -32,7 +32,7 @@ class cloudbroker_qos(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method limitIO")
 
-    def limitInternalBandwith(self, machineMAC, rate, burst, cloudspaceId=0, machineId=0, **kwargs):
+    def limitInternalBandwith(self, machineMAC, rate, burst, cloudspaceId='0', machineId='0', **kwargs):
         """
         This will put a limit on the VIF of all VMs within the cloudspace or machine
         Pass either cloudspaceId or machineId depending what you want to filter down.

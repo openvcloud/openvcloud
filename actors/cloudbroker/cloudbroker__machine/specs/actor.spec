@@ -10,20 +10,6 @@
         var:machineId str,, ID of machine
         result:json
 
-    method:create
-        """
-        Create a machine based on the available sizes, in a certain space.
-        The user needs write access rights on the space.
-        """
-        var:cloudspaceId str,,id of space in which we want to create a machine
-        var:name str,,name of machine @tags validator:name
-        var:description str,,optional description @tags: optional
-        var:sizeId int,,id of the specific size
-        var:imageId str,, id of the specific image
-        var:disksize int,, size of base volume
-        var:datadisks list(int),, list of data disk sizes in gigabytes @optional
-        result:bool
-
     method:createOnStack
         """
         Create a machine on a specific stackid
@@ -31,10 +17,10 @@
         var:cloudspaceId str,,id of space in which we want to create a machine
         var:name str,,name of machine @tags validator:name
         var:description str,,optional description @tags: optional
-        var:sizeId int,,id of the specific size
+        var:sizeId str,,id of the specific size
         var:imageId str,, id of the specific image
         var:disksize int,, size of base volume
-        var:stackId str,, id of the stack
+        var:stackId str,, id of the stack @optional
         var:datadisks list(int),, list of data disk sizes in gigabytes @optional
         result:bool
 
@@ -315,28 +301,28 @@
         """
         Starts a deployed machines
         """
-        var:machineIds list(int),,Machine ids
+        var:machineIds list(str),,Machine ids
         var:reason str,,Reason
 
     method:stopMachines
         """
         Stops the running machines
         """
-        var:machineIds list(int),,Machine ids
+        var:machineIds list(str),,Machine ids
         var:reason str,,Reason
 
     method:rebootMachines
         """
         Reboots running machines
         """
-        var:machineIds list(int),,Machine ids
+        var:machineIds list(str),,Machine ids
         var:reason str,,Reason
 
     method:destroyMachines
         """
         Destroys machines
         """
-        var:machineIds list(int),,Machine ids
+        var:machineIds list(str),,Machine ids
         var:reason str,,Reason
 
     method:getConsoleInfo
@@ -344,4 +330,3 @@
         Get Console info for machine
         """
         var:token str,,token to get consoleinfo for
-
