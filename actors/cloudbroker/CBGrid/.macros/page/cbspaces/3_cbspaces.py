@@ -51,7 +51,7 @@ def main(j, args, params, tags, tasklet):
             'id': 'externalnetworkip'
         }
     ]
-    tableid = modifier.addTableFromModel('cloudbroker', 'cloudspace', fields, filters, selectable='rows')
+    tableid = modifier.addTableFromModel('cloudbroker', 'Cloudspace', fields, filters, selectable='rows')
     modifier.addSearchOptions('#%s' % tableid)
     modifier.addSorting('#%s' % tableid, 1, 'desc')
 

@@ -1,4 +1,5 @@
 from .base import BaseManager
+from requests import exceptions
 
 
 class MachineManager(BaseManager):
@@ -62,4 +63,8 @@ class MachineManager(BaseManager):
         return self.client.nodes.GetVM(nodeid=nodeId, vmid='vm-{}'.format(machineId)).json()['status']
 
     def destroy(self, machineId, nodeId):
-        return self.client.nodes.DeleteVM(nodeid=nodeId, vmid='vm-{}'.format(machineId))
+        try:
+            return self.client.nodes.DeleteVM(nodeid=nodeId, vmid='vm-{}'.format(machineId))
+        except exceptions.HTTPError as e:
+            if e.response.status_code != 404:
+                raise

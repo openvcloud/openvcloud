@@ -37,7 +37,7 @@ class cloudbroker_cloudspace(BaseActor):
         try:
             # delete machines
             machines = self.models.VMachine.objects(cloudspace=cloudspace, status__ne='DESTROYED')
-            for idx, machine in enumerate(sorted(machines, key=lambda m: m['cloneReference'], reverse=True)):
+            for idx, machine in enumerate(machines):  # enumerate(sorted(machines, key=lambda m: m['cloneReference'], reverse=True)):
                 if machine.status != 'DESTROYED':
                     ctx.events.sendMessage(title, 'Deleting Virtual Machine %s/%s' % (idx + 1, len(machines)))
                     j.apps.cloudbroker.machine.destroy(machine.id, reason)
@@ -47,7 +47,7 @@ class cloudbroker_cloudspace(BaseActor):
 
         # delete vfw
         ctx.events.sendMessage(title, 'Deleting Virtual Firewall')
-        self.cb.actors.cloudspaces.delete(cloudapaceId=cloudspace.id)
+        self.cb.actors.cloudapi.cloudspaces.delete(cloudspaceId=cloudspace.id)
         return True
 
     @auth(['level1', 'level2', 'level3'])
@@ -222,7 +222,7 @@ class cloudbroker_cloudspace(BaseActor):
                                                           maxVDiskCapacity=maxVDiskCapacity, maxCPUCapacity=maxCPUCapacity,
                                                           maxNetworkPeerTransfer=maxNetworkPeerTransfer,
                                                           maxNumPublicIP=maxNumPublicIP, externalnetworkId=externalnetworkId,
-                                                          allowedVMSizes=allowedVMSizes)
+                                                          allowedVMSizes=allowedVMSizes, **kwargs)
 
     @auth(['level1', 'level2', 'level3'])
     def addUser(self, cloudspaceId, username, accesstype, **kwargs):
