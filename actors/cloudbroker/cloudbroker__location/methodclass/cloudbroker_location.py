@@ -1,4 +1,3 @@
-from js9 import j
 from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib.baseactor import BaseActor
@@ -19,7 +18,7 @@ class cloudbroker_location(BaseActor):
         return 'Scheduled check on VMS'
 
     @auth(['level1', 'level2', 'level3'])
-    def update(self, locationId, name, apiUrl, **kwargs):
+    def update(self, locationId, name, apiUrl, apiToken, **kwargs):
         location = self.models.Location.get(locationId)
         if not location:
             raise exceptions.NotFound('Could not find location with id %s' % locationId)
@@ -28,17 +27,20 @@ class cloudbroker_location(BaseActor):
             update['name'] = name
         if apiUrl:
             update['apiUrl'] = apiUrl
+        if apiToken:
+            update['apiToken'] = apiToken
         if update:
-            location.modify(update)
+            location.modify(**update)
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    def add(self, name, apiUrl, **kwargs):
+    def add(self, name, apiUrl, apiToken, **kwargs):
         if self.models.Location.objects(name=name).count() > 0:
             raise exceptions.Conflict("Location with name %s already exists" % name)
         location = self.models.Location(
             name=name,
-            apiUrl=apiUrl
+            apiUrl=apiUrl,
+            apiToken=apiToken
         )
         location.save()
         return 'Location has been added successfully, do not forget to add networkids and public IPs'

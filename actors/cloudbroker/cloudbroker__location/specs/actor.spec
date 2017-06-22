@@ -23,9 +23,10 @@
         """
         Rename a grid/location
         """
-        var:loacationId str,, id of the location
-        var:name str,, New name of the location @validator:name
-        var:apiUrl str,,New API URL
+        var:locationId str,, id of the location
+        var:name str,, New name of the location @validator:name optional
+        var:apiUrl str,,New API URL @optional
+        var:apiToken str,, Token to authenticate with api @optional
         result: bool
 
     method:add
@@ -34,4 +35,5 @@
         """
         var:name str,, Name of the location @validator:name
         var:apiUrl str,, Url of the location to add
+        var:apiToken str,, Token to authenticate with api @optional
         result: str

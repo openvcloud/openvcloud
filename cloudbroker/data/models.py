@@ -1,5 +1,5 @@
 from mongoengine import fields
-from mongoengine import EmbeddedDocument, Document
+from mongoengine import EmbeddedDocument
 from js9 import j
 import json
 from JumpScale9Portal.data.models.Models import Base, Errorcondition
@@ -103,6 +103,7 @@ class Image(ModelBase):
 class Location(ModelBase):
     name = fields.StringField(required=True)
     apiUrl = fields.StringField()
+    apiToken = fields.StringField()
 
 
 class Stack(ModelBase):

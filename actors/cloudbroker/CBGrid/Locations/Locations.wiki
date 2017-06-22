@@ -9,8 +9,13 @@
     - name: name
       label: Location Name
       type: text
+      required: true
     - name: apiUrl
       label: API URL
+      type: text
+      required: true
+    - name: apiToken
+      label: API Token
       type: text
 }}
 h3. Locations
