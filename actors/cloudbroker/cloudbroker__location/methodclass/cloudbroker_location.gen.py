@@ -13,11 +13,12 @@ class cloudbroker_location(j.tools.code.classGetBase()):
         #cloudbroker_location_osis.__init__(self)
 
 
-    def add(self, name, apiUrl, **kwargs):
+    def add(self, name, apiUrl, apiToken, **kwargs):
         """
         Adds a location/grid
         param:name Name of the location
         param:apiUrl Url of the location to add
+        param:apiToken Token to authenticate with api
         result 
         """
         #put your code here to implement this method
@@ -43,12 +44,13 @@ class cloudbroker_location(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method purgeLogs")
 
-    def update(self, loacationId, name, apiUrl, **kwargs):
+    def update(self, locationId, name, apiUrl, apiToken, **kwargs):
         """
         Rename a grid/location
-        param:loacationId id of the location
+        param:locationId id of the location
         param:name New name of the location
         param:apiUrl New API URL
+        param:apiToken Token to authenticate with api
         result 
         """
         #put your code here to implement this method

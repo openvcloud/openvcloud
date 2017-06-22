@@ -19,6 +19,9 @@ h3. Location: ${name}
    - label: API Url
      name: apiUrl
      type: text
+   - name: apiToken
+     label: API token
+     type: text
 
 - display: Check VMs
   action: /restmachine/cloudbroker/grid/checkVMs
@@ -34,16 +37,10 @@ h3. Location: ${name}
   input:
    - age
 
-- display: Sync Available Images
-  action: /restmachine/cloudbroker/iaas/syncAvailableImagesToCloudbroker
-  data:
-   gid: ${gid}
-
 - display: Sync Stacks
   action: /restmachine/cloudbroker/computenode/sync
   data:
    locationId: ${id}
-
 
 - display: Add New VM Size
   action: /restmachine/cloudbroker/iaas/addSize
@@ -62,20 +59,17 @@ h3. Location: ${name}
     placeholder: required
     required: true
 
-
   - label: Memory in MB
     name: memory
     type: number
     placeholder: required
     required: true
 
-
   - label: Sizes of bootdisk in GB
     name: disksize
     type: text
     placeholder: comma , sperated, ints
     required: true
-
 
 - display: Delete Unused VM Size
   action: "#deletesize"

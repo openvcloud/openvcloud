@@ -60,7 +60,7 @@ h2. Cloud Space: ${name}
     type: hidden
     value: $$id
 
-{% if status == "VIRTUAL" %}
+{% if cloudspace.status == "VIRTUAL" %}
 - display: Deploy VFW
   action: /restmachine/cloudbroker/cloudspace/deployVFW
   reload: false
@@ -81,7 +81,7 @@ h2. Cloud Space: ${name}
   input:
   - reason
 
-{% if status != "DISABLED" %}
+{% if cloudspace.status != "DISABLED" %}
 - display: Disable Cloud Space
   action: /restmachine/cloudapi/cloudspaces/disable
   data:
