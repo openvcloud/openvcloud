@@ -56,8 +56,8 @@ h3. Snapshots
 {{action id:'action-Snapshot' class:'glyphicon glyphicon-camera margin-bottom-medium margin-left-medium' label:'Create Snapshot'}}
 
 ||Name||Time||Actions||
-{% for snapshot in vmachine.snapshots -%}
-|${snapshot.name}|{{ts:${snapshot.epoch}}}|{{action: id:'action-RollbackSnapshot' class:'glyphicon glyphicon-repeat' data-epoch:'${vmachine.snapshot.epoch}'}}{{action: id:'action-DeleteSnapshot' deleterow:true class:'glyphicon glyphicon-remove' data-epoch:'${snapshot.epoch}'}}|
+{% for snapshot in snapshots -%}
+|${snapshot.label}|{{ts:${snapshot.timestamp}}}|{{action: id:'action-RollbackSnapshot' class:'glyphicon glyphicon-repeat' data-epoch:'${snapshot.timestamp}'}}{{action: id:'action-DeleteSnapshot' deleterow:true class:'glyphicon glyphicon-remove' data-epoch:'${snapshot.timestamp}'}}|
 {% else -%}
 | | | |
 {% endfor %}
@@ -66,7 +66,7 @@ h3. Port Forwards
 {{action id:'action-CreatePortforwarding' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Create Portforward'}}
 ||Public IP||Public Port||VM IP||VM Port||Protocol||Delete||
 {% for portforward in portforwards -%}
-|${vmachine.portforward.fromAddr}|${vmachine.portforward.fromPort}|${vmachine.portforward.toAddr}|${vmachine.portforward.toPort}|${vmachine.portforward.protocol.upper()}|{{action: id:'action-DeletePortforwarding' deleterow:true class:'glyphicon glyphicon-remove' data-publicIp:'${vmachine.portforward.fromAddr}' data-publicPort:'${vmachine.portforward.fromPort}' data-proto:'${vmachine.portforward.protocol}'}}|
+|${portforward.fromAddr}|${portforward.fromPort}|${portforward.toAddr}|${portforward.toPort}|${portforward.protocol.upper()}|{{action: id:'action-DeletePortforwarding' deleterow:true class:'glyphicon glyphicon-remove' data-publicIp:'${portforward.fromAddr}' data-publicPort:'${portforward.fromPort}' data-proto:'${portforward.protocol}'}}|
 {% else -%}
 | | | | | | |
 {% endfor %}

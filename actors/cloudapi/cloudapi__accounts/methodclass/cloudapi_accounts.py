@@ -177,8 +177,6 @@ class cloudapi_accounts(BaseActor):
         else:
             raise exceptions.NotFound('User "%s" does not have access on the account' % userId)
 
-        self.models.account.updateSearch({'id': accountId},
-                                         {'$pull': {'acl': {'type': 'U', 'userGroupId': userId}}})
         ace = ace.to_dict()
         ace.pop('right')
         account.update(pull__acl=ace)

@@ -586,10 +586,8 @@ class Machine(object):
         return machine.id
 
     def update(self, machine):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
-        return client.machine.update(machine, stack.referenceId)
+        client = getGridClient(machine.stack.location, models)
+        return client.machine.update(machine, machine.stack.referenceId)
 
     def resume(self, machine):
         client = getGridClient(machine.stack.location, models)

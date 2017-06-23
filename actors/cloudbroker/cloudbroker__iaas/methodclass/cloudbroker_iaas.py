@@ -17,7 +17,7 @@ class cloudbroker_iaas(BaseActor):
     """
     gateway to grid
     """
-    def addExternalNetwork(self, name, subnet, gateway, startip, endip, gid, vlan, accountId, **kwargs):
+    def addExternalNetwork(self, name, subnet, gateway, startip, endip, locationId, vlan, accountId, **kwargs):
         """
         Adds a public network range to be used for cloudspaces
         param:subnet the subnet to add in CIDR notation (x.x.x.x/y)
@@ -30,36 +30,34 @@ class cloudbroker_iaas(BaseActor):
                 raise exceptions.BadRequest("End IP Addresses %s is not in subnet %s" % (endip, subnet))
             if not checkIPS(net, [gateway]):
                 raise exceptions.BadRequest("Gateway Address %s is not in subnet %s" % (gateway, subnet))
-            if self.models.externalnetwork.count({'vlan': vlan}) > 0:
+            if self.models.ExternalNetwork.objects(vlan=vlan).count() > 0:
                 raise exceptions.Conflict("VLAN {} is already in use by another external network")
         except netaddr.AddrFormatError as e:
             raise exceptions.BadRequest(e.message)
 
-        pool = self.models.externalnetwork.new()
-        pool.gid = int(gid)
-        pool.gateway = gateway
-        pool.name = name
-        pool.vlan = vlan
-        pool.subnetmask = str(net.netmask)
-        pool.network = str(net.network)
-        pool.accountId = accountId or 0
-        pool.ips = [str(ip) for ip in netaddr.IPRange(startip, endip)]
-        pool.id, _, _ = self.models.externalnetwork.set(pool)
-        return pool.id
+        pool = self.models.ExternalNetwork(
+            location=locationId,
+            gateway=gateway,
+            name=name,
+            vlan=vlan,
+            subnetmask=str(net.netmask),
+            network=str(net.network),
+            account=accountId,
+            ips=[str(ip) for ip in netaddr.IPRange(startip, endip)],
+        )
+        pool.save()
+        return str(pool.id)
 
     def getUsedIPInfo(self, pool):
         network = {'spaces': [], 'vms': []}
-        for space in self.models.cloudspace.search({'$query': {'gid': pool.gid,
-                                                               'externalnetworkId': pool.id,
-                                                               'status': 'DEPLOYED'},
-                                                    '$fields': ['id', 'name', 'externalnetworkip']})[1:]:
+        for space in self.models.Cloudspace.objects(location=pool.location, externalnetwork=pool, status='DEPLOYED'):
             network['spaces'].append(space)
-        for vm in self.models.vmachine.search({'nics.type': 'PUBLIC', 'status': {'$nin': ['ERROR', 'DESTROYED']}})[1:]:
-            for nic in vm['nics']:
-                if nic['type'] == 'PUBLIC':
-                    tagObject = j.core.tags.getObject(nic['params'])
+        for vm in self.models.VMachine.find({'nics.type': 'PUBLIC', 'status': {'$nin': ['ERROR', 'DESTROYED']}}):
+            for nic in vm.nics:
+                if nic.type == 'PUBLIC':
+                    tagObject = j.core.tags.getObject(nic.params)
                     if int(tagObject.tags.get('externalnetworkId', 0)) == pool.id:
-                        vm['externalnetworkip'] = nic['ipAddress']
+                        vm.externalnetworkip = nic.ipAddress
                         network['vms'].append(vm)
         return network
 
@@ -85,9 +83,9 @@ class cloudbroker_iaas(BaseActor):
         """
         Add public ips to an existing range
         """
-        if not self.models.externalnetwork.exists(externalnetworkId):
+        pool = self.models.ExternalNetwork.get(externalnetworkId)
+        if not pool:
             raise exceptions.NotFound("Could not find external network with id %s" % externalnetworkId)
-        pool = self.models.externalnetwork.get(externalnetworkId)
         try:
             net = netaddr.IPNetwork("{}/{}".format(pool.network, pool.subnetmask))
             if netaddr.IPAddress(startip) not in net:
@@ -102,9 +100,9 @@ class cloudbroker_iaas(BaseActor):
         duplicateips = usedips.intersection(newset)
         if duplicateips:
             raise exceptions.Conflict("New range overlaps with existing deployed IP Addresses")
+
         ips.update(newset)
-        pool.ips = list(ips)
-        self.models.externalnetwork.set(pool)
+        pool.modify(ips=ips)
         return True
 
     def changeIPv4Gateway(self, externalnetworkId, gateway, **kwargs):

@@ -1,26 +1,19 @@
 def main(j, args, params, tags, tasklet):
-
+    models = j.portal.tools.models.cloudbroker
     params.result = (args.doc, args.doc)
     networkid = args.requestContext.params.get('networkid')
-    try:
-        networkid = int(networkid)
-    except:
-        pass
-    if not isinstance(networkid, int):
+    if not networkid:
         args.doc.applyTemplate({})
         return params
 
-    cbclient = j.clients.osis.getNamespace('cloudbroker')
-    if not cbclient.externalnetwork.exists(networkid):
-        args.doc.applyTemplate({id: None}, True)
+    pool = models.ExternalNetwork.get(networkid)
+    if not pool:
+        args.doc.applyTemplate({'externalnetwork': None}, True)
         return params
 
-    pool = cbclient.externalnetwork.get(networkid)
     networkinfo = j.apps.cloudbroker.iaas.getUsedIPInfo(pool)
-    network = pool.dump()
-    network.update(networkinfo)
 
-    args.doc.applyTemplate(network, True)
+    args.doc.applyTemplate({'externalnetwork': pool, 'networkinfo': networkinfo}, True)
     return params
 
 

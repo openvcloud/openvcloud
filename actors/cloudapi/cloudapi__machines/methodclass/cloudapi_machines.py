@@ -133,7 +133,7 @@ class cloudapi_machines(BaseActor):
         return True
 
     @authenticator.auth(acl={'cloudspace': set('C')})
-    def addDisk(self, machineId, diskName, description, size=10, type='D', ssdSize=0, iops=2000, **kwargs):
+    def addDisk(self, machineId, diskName, description, size=10, type='DB', ssdSize=0, iops=2000, **kwargs):
         """
         Create and attach a disk to the machine
 
@@ -141,7 +141,7 @@ class cloudapi_machines(BaseActor):
         :param diskName: name of disk
         :param description: optional description
         :param size: size in GByte default=10
-        :param type: (B;D;T)  B=Boot;D=Data;T=Temp default=B
+        :param type: (BOOT;DB;TEMP)
         :return int, id of the disk
 
         """
@@ -150,14 +150,13 @@ class cloudapi_machines(BaseActor):
             raise exceptions.BadRequest("Cannot create more than 25 disk on a machine")
         cloudspace = machine.cloudspace
         # Validate that enough resources are available in the CU limits to add the disk
-        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace.id, vdisksize=size)
-        disk = j.apps.cloudapi.disks._create(accountId=cloudspace.accountId, gid=cloudspace.gid,
+        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace, vdisksize=size)
+        disk = j.apps.cloudapi.disks._create(accountId=cloudspace.account, location=cloudspace.location,
                                              name=diskName, description=description, size=size,
                                              type=type, iops=iops, **kwargs)
-        machine.disks.append(disk.id)
-        self.models.vmachine.set(machine)
+        machine.modify(push__disks=disk)
         self.cb.machine.update(machine)
-        return disk.id
+        return str(disk.id)
 
     @authenticator.auth(acl={'cloudspace': set('X')})
     def detachDisk(self, machineId, diskId, **kwargs):
@@ -169,12 +168,12 @@ class cloudapi_machines(BaseActor):
         :return: True if disk was detached successfully
         """
         machine = self._get(machineId)
-        diskId = int(diskId)
-        if diskId not in machine.disks:
+        disk = self.models.Disk.get(diskId)
+        if disk not in machine.disks:
             return True
-        machine.disks.remove(diskId)
+        machine.disks.remove(disk)
         self.cb.machine.update(machine)
-        self.models.vmachine.set(machine)
+        machine.update(pull__disks=disk)
         return True
 
     @authenticator.auth(acl={'cloudspace': set('X')})
@@ -197,15 +196,15 @@ class cloudapi_machines(BaseActor):
             if vmachine.cloudspace.id != machine.cloudspace.id:
                 # Validate that enough resources are available in the CU limits of the new cloudspace to add the disk
                 j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(
-                    machine.cloudspaceId, vdisksize=disk.sizeMax, checkaccount=False)
+                    machine.cloudspace, vdisksize=disk.sizeMax, checkaccount=False)
             self.detachDisk(machineId=vmachine.id, diskId=diskId)
         else:
             # the disk was not attached to any machines so check if there is enough resources in the cloudspace
             j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(
-                machine.cloudspaceId, vdisksize=disk.sizeMax, checkaccount=False)
-        j.apps.cloudapi.disks.getStorageVolume(disk)
-        machine.disks.append(diskId)
-        self.models.vmachine.set(machine)
+                machine.cloudspace, vdisksize=disk.sizeMax, checkaccount=False)
+        machine.disks.append(disk)
+        self.cb.machine.update(machine)
+        machine.update(push__disks=disk)
         return True
 
     @authenticator.auth(acl={'account': set('C')})
@@ -844,8 +843,9 @@ class cloudapi_machines(BaseActor):
         self._get(machineId)
         results = []
         for audit in self.systemodel.Audit.objects(tags__contains='machineId:{}'.format(machineId)):
-            call = os.path.basename(audit.call)
-            if call in ['get', 'getHistory', 'listSnapshots', 'list', 'getConsoleUrl']:
+            parts = audit.call.split('/')
+            call = '/'.join(parts[-2:])
+            if parts[-1] in ['get', 'getHistory', 'listSnapshots', 'list', 'getConsoleUrl']:
                 continue
             results.append({
                 'epoch': audit.timestamp,
@@ -986,12 +986,14 @@ class cloudapi_machines(BaseActor):
         :return True if user access was updated successfully
         """
         # Check if user exists in the system or is an unregistered invited user
-        existinguser = self.systemodel.user.search({'id': userId})[1:]
-        if existinguser:
+        machine = self._get(machineId)
+        user = self.cb.checkUser(userId, activeonly=False)
+        if user:
             userstatus = 'CONFIRMED'
+            userId = user.name
         else:
             userstatus = 'INVITED'
-        return self._updateACE(machineId, userId, accesstype, userstatus)
+        return self._updateACE(machine, userId, accesstype, userstatus)
 
     @authenticator.auth(acl={'cloudspace': set('X')})
     def attachExternalNetwork(self, machineId, **kwargs):

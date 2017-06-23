@@ -31,7 +31,7 @@ class cloudbroker_iaas(j.tools.code.classGetBase()):
         param:gateway gateway of the subnet
         param:startip First IP Address from the range to add
         param:endip Last IP Address from the range to add
-        param:locationId id of grid
+        param:locationId id of the location
         param:vlan VLAN Tag
         param:accountId accountId that has exclusive access to this network Tag
         result int

@@ -11,60 +11,60 @@ class cloudapi_disks(BaseActor):
 
     """
     @authenticator.auth(acl={'account': set('C')})
-    def create(self, accountId, gid, name, description, size=10, type='D', ssdSize=0, iops=2000, **kwargs):
+    def create(self, accountId, locationId, name, description, size=10, type='DB', ssdSize=0, iops=2000, **kwargs):
         """
         Create a disk
 
         :param accountId: id of account
-        :param gid :id of the grid
+        :param locationId :id of the location
         :param diskName: name of disk
         :param description: optional description of disk
         :param size: size in GBytes, default is 10
-        :param type: (B;D;T)  B=Boot;D=Data;T=Temp, default is B
+        :param type: (BOOT;DB;CACHE;TMP)
         :return the id of the created disk
 
         """
         # Validate that enough resources are available in the account CU limits to add the disk
+        location = self.models.Location.get(locationId)
+        if not location:
+            raise exceptions.BadRequest("Invalid locationId passed")
         j.apps.cloudapi.accounts.checkAvailableMachineResources(accountId, vdisksize=size)
-        disk = self._create(accountId, gid, name, description, size, type, iops)
+        disk = self._create(accountId, location, name, description, size, type, iops)
         return disk.id
 
-    def _create(self, accountId, gid, name, description, size=10, type='D', iops=2000, **kwargs):
+    def _create(self, accountId, location, name, description, size=10, type='D', iops=2000, **kwargs):
         if size > 2000:
             raise exceptions.BadRequest("Disk size can not be bigger than 2000 GB")
-        disk = self.models.disk.new()
-        disk.name = name
-        disk.descr = description
-        disk.sizeMax = size
-        disk.type = type
-        disk.gid = gid
-        disk.iops = iops
-        disk.accountId = accountId
-        diskid = self.models.disk.set(disk)[0]
-        disk = self.models.disk.get(diskid)
+        disk = self.models.Disk(
+            name=name,
+            description=description,
+            location=location,
+            size=size,
+            type=type,
+            iops=iops,
+            account=accountId
+        )
+        disk.save()
         try:
-            client = getGridClient(gid, self.models)
+            client = getGridClient(location, self.models)
             client.storage.createVolume(disk)
         except:
-            self.models.disk.delete(disk.id)
+            disk.delete()
             raise
-        self.models.disk.set(disk)
         return disk
 
     @authenticator.auth(acl={'account': set('C')})
     def limitIO(self, diskId, iops, **kwargs):
-        disk = self.models.disk.get(diskId)
-        if disk.status == 'DESTROYED':
-            raise exceptions.BadRequest("Disk with id %s is not created" % diskId)
+        disk = self.models.Disk.get(diskId)
+        if not disk or disk.status == 'DESTROYED':
+            raise exceptions.NotFound("Disk with id %s is not created" % diskId)
 
-        machine = next(iter(self.models.vmachine.search({'disks': diskId})[1:]), None)
+        machine = self.models.VMachine.objects(disks=disk).first()
         if not machine:
-            raise exceptions.NotFound("Could not find virtual machine beloning to disk")
-        disk.iops = iops
-        self.models.disk.set(disk)
-        provider, node, machine = self.cb.getProviderAndNode(machine['id'])
-        volume = self.getStorageVolume(disk, provider, node)
-        return provider.client.ex_limitio(volume, iops)
+            raise exceptions.BadRequest("Could not find virtual machine beloning to disk")
+        disk.modify(iops=iops)
+        self.cb.machine.update(machine)
+        return True
 
     @authenticator.auth(acl={'account': set('R')})
     def get(self, diskId, **kwargs):
@@ -111,18 +111,17 @@ class cloudapi_disks(BaseActor):
         :param detach: detach disk from machine first
         :return True if disk was deleted successfully
         """
-        if not self.models.disk.exists(diskId):
+        disk = self.models.Disk.get(diskId)
+        if not disk:
             return True
-        disk = self.models.disk.get(diskId)
         if disk.status == 'DESTROYED':
             return True
-        machines = self.models.vmachine.search({'disks': diskId, 'status': {'$ne': 'DESTROYED'}})[1:]
-        if machines and not detach:
+        machine = self.models.VMachine.objects(disks=disk).first()
+        if machine and not detach:
             raise exceptions.Conflict('Can not delete disk which is attached')
-        elif machines:
-            j.apps.cloudapi.machines.detachDisk(machineId=machines[0]['id'], diskId=diskId, **kwargs)
-        client = getGridClient(disk.gid, self.models)
+        elif machine:
+            j.apps.cloudapi.machines.detachDisk(machineId=machine.id, diskId=diskId, **kwargs)
+        client = getGridClient(disk.location, self.models)
         client.storage.deleteVolume(disk)
-        disk.status = 'DESTROYED'
-        self.models.disk.set(disk)
+        disk.update(status='DESTROYED')
         return True

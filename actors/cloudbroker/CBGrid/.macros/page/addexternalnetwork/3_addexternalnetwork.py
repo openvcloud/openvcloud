@@ -2,9 +2,9 @@ from JumpScale9Portal.portal.docgenerator.popup import Popup
 
 
 def main(j, args, params, tags, tasklet):
+    models = j.portal.tools.models.cloudbroker
+    locations = models.Location.objects.only('id', 'name')
     params.result = page = args.page
-    ccl = j.clients.osis.getNamespace('cloudbroker')
-    locations = ccl.location.search({})[1:]
 
     popup = Popup(id='addexternalnetwork', header='Add External Network',
                   submit_url='/restmachine/cloudbroker/iaas/addExternalNetwork')
@@ -15,7 +15,7 @@ def main(j, args, params, tags, tasklet):
     popup.addText('End IP Address', 'endip', required=True)
     popup.addNumber('VLAN Tag (leave empty if its the standard public bridge)', 'vlan', required=False)
     popup.addNumber('AccountId (make external network exclusive to this accountId otherwise leave empty)', 'accountId', required=False)
-    popup.addDropdown('Choose Location', 'gid', [(location['name'], location['gid']) for location in locations])
+    popup.addDropdown('Choose Location', 'locationId', [(location.name, str(location.id)) for location in locations])
     popup.write_html(page)
 
     return params

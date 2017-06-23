@@ -43,4 +43,8 @@ class cloudbroker_location(BaseActor):
             apiToken=apiToken
         )
         location.save()
+        self.models.NetworkIds(
+            location=location,
+            freeNetworkIds=list(range(1, 1000))
+        ).save()
         return 'Location has been added successfully, do not forget to add networkids and public IPs'

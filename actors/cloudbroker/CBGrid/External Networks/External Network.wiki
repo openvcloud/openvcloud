@@ -1,7 +1,7 @@
 @usedefaults
-@@title External Network: ${network} / ${subnetmask}
+@@title External Network: ${externalnetwork.network} / ${externalnetwork.subnetmask}
 {{externalnetwork}}
-{% if id %}
+{% if externalnetwork %}
 
 {{actions:
 - display: Change Gateway
@@ -12,7 +12,7 @@
     type: text
     name: gateway
   data:
-    externalnetworkId: ${id}
+    externalnetworkId: ${externalnetwork.id}
 
 - display: Add External IP Addresses
   action: /restmachine/cloudbroker/iaas/addExternalIPS
@@ -25,35 +25,35 @@
     type: text
     name: endip
   data:
-    externalnetworkId: ${id}
+    externalnetworkId: ${externalnetwork.id}
 
 - display: Delete external network
   action: /restmachine/cloudbroker/iaas/deleteExternalNetwork
   data:
-    externalnetworkId: ${id}
+    externalnetworkId: ${externalnetwork.id}
 
 - display: Remove External IP
   action: /restmachine/cloudbroker/iaas/removeExternalIP
   refresh: flase
   hide: true
   data:
-    externalnetworkId: ${id}
+    externalnetworkId: ${externalnetwork.id}
 }}
 
 {{datatables_use}}
 
 h3. External Network
 
-|*Network*|${network}|
-|*Subnet Mask*|${subnetmask}|
-|*Gateway*|${gateway} {{action: id:'action-ChangeGateway' class:'glyphicon glyphicon-edit margin-bottom-medium margin-left-medium' label:''}} |
+|*Network*|${externalnetwork.network}|
+|*Subnet Mask*|${externalnetwork.subnetmask}|
+|*Gateway*|${externalnetwork.gateway} {{action: id:'action-ChangeGateway' class:'glyphicon glyphicon-edit margin-bottom-medium margin-left-medium' label:''}} |
 
 @HR
 
 h4. Free IPs
 {{action: id:'action-AddExternalIPAddresses' class:'glyphicon glyphicon-plus margin-bottom-medium margin-left-medium' label:'Add External IP Addresses'}}
 ||Free IP Address||Remove||
-{% for freeip in ips -%}
+{% for freeip in externalnetwork.ips -%}
 |${freeip}|{{ action: id:'action-RemoveExternalIP' deleterow:true class:'glyphicon glyphicon-remove' data-ip:'${freeip}' }}|
 {% else -%}
 | | |
@@ -63,7 +63,7 @@ h4. Free IPs
 
 h4. External IP Addresses Used by Cloud Spaces
 ||External IP Address||Cloud Space||
-{% for space in spaces -%}
+{% for space in networkinfo.spaces -%}
 |${space.externalnetworkip}|[${space.name} (${space.id})|cloud space?id=${space.id}]|
 {% else -%}
 | | |
@@ -73,7 +73,7 @@ h4. External IP Addresses Used by Cloud Spaces
 
 h4. External IP Addresses Used by Virtual Machines
 ||Public IP Address||Virtual Machine||Cloud Space||
-{% for vm in vms -%}
+{% for vm in networkinfo.vms -%}
 |${vm.externalnetworkip}|[${vm.name}|virtual machine?id=${vm.id}]|[${vm.cloudspaceId}|cloud space?id=${vm.cloudspaceId}]|
 {% else -%}
 | | | |

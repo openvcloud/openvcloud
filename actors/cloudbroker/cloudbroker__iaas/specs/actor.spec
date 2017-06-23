@@ -17,7 +17,7 @@
         var:gateway str,, gateway of the subnet
         var:startip str,, First IP Address from the range to add
         var:endip str,, Last IP Address from the range to add
-        var:locationId str,, id of grid
+        var:locationId str,, id of the location
         var:vlan int,,VLAN Tag @optional
         var:accountId str,,accountId that has exclusive access to this network Tag @optional
         result:int
@@ -51,7 +51,7 @@
         var:externalnetworkId str,,
         var:ip str,,
         result:boolean
-        
+
     method:addSize
         """
         Add size to location

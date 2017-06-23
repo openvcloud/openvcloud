@@ -253,13 +253,12 @@ class cloudapi_users(BaseActor):
         if limit > 20:
             raise exceptions.BadRequest('Cannot return more than 20 usernames while matching users')
 
-        matchingusers = self.systemodel.user.search({'id': {'$regex': usernameregex}},
-                                                    size=limit)[1:]
+        matchingusers = self.systemodel.User.find({'name': {'$regex': usernameregex}})
 
         if matchingusers:
             def userinfo(user):
-                emailhash = j.tools.hash.md5_string(next(iter(user['emails']), ''))
-                return {'username': user['id'],
+                emailhash = j.data.hash.md5_string(next(iter(user['emails']), ''))
+                return {'username': user['name'],
                         'gravatarurl': 'http://www.gravatar.com/avatar/%s' % emailhash}
             return map(userinfo, matchingusers)
         else:

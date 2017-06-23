@@ -237,10 +237,13 @@ class cloudapi_cloudspaces(BaseActor):
             self.cb.releaseNetworkId(location, networkid)
             raise
 
-        cs.save()
-
         # deploy async.
-        gevent.spawn(self.deploy, cloudspaceId=cs.id, **kwargs)
+        cs.save()
+        try:
+            self._deploy(cs)
+        except:
+            cs.delete()
+            raise
         ctx = kwargs['ctx']
         ctx.env['tags'] += 'cloudspaceId:{}'.format(cs.id)
 
@@ -248,6 +251,10 @@ class cloudapi_cloudspaces(BaseActor):
 
     @authenticator.auth(acl={'cloudspace': set('C')})
     def deploy(self, cloudspaceId, **kwargs):
+        cloudspace = self.cb.cloudspace.get(cloudspaceId)
+        return self._deploy(cloudspace)
+
+    def _deploy(self, cloudspace, **kwargs):
         """
         Create VFW for cloudspace
 
@@ -255,26 +262,25 @@ class cloudapi_cloudspaces(BaseActor):
         :return: status of deployment
         """
         try:
-            cs = self.models.Cloudspace.get(cloudspaceId)
-            if cs.status != 'VIRTUAL':
+            if cloudspace.status != 'VIRTUAL':
                 return
-            cs.modify(status='DEPLOYING')
-            pool = cs.externalnetwork
-            if cs.externalnetworkip is None:
-                pool, externalipaddress = self.network.getExternalIpAddress(cs.location, cs.externalnetwork)
-                cs.externalnetworkip = str(externalipaddress)
-                cs.modify(externalnetworkip=str(externalipaddress))
+            cloudspace.modify(status='DEPLOYING')
+            pool = cloudspace.externalnetwork
+            if cloudspace.externalnetworkip is None:
+                pool, externalipaddress = self.network.getExternalIpAddress(cloudspace.location, cloudspace.externalnetwork)
+                cloudspace.externalnetworkip = str(externalipaddress)
+                cloudspace.modify(externalnetworkip=str(externalipaddress))
 
-            externalipaddress = netaddr.IPNetwork(cs.externalnetworkip)
+            externalipaddress = netaddr.IPNetwork(cloudspace.externalnetworkip)
 
             try:
-                self.netmgr.create(cs)
+                self.netmgr.create(cloudspace)
             except:
                 self.network.releaseExternalIpAddress(pool, str(externalipaddress))
-                cs.modify(status='VIRTUAL', externalnetworkip=None)
+                cloudspace.modify(status='VIRTUAL', externalnetworkip=None)
                 raise
 
-            cs.modify(status='DEPLOYED', updateTime=int(time.time()))
+            cloudspace.modify(status='DEPLOYED', updateTime=int(time.time()))
             return 'DEPLOYED'
         except Exception as e:
             j.errorhandler.processPythonExceptionObject(e, message="Cloudspace deploy aysnc call exception.")

@@ -53,8 +53,23 @@ def main(j, args, params, tags, tasklet):
     users = generateUsersList(machine.cloudspace.account, 'acc', users)
     users = generateUsersList(machine.cloudspace, 'cl', users)
     users = generateUsersList(machine, 'vm', users)
+    privateips = []
+    for nic in machine.nics:
+        privateips.append(nic.ipAddress)
+    portforwards = []
+    for portforward in machine.cloudspace.forwardRules:
+        if portforward.toAddr in privateips:
+            portforwards.append(portforward)
+    snapshots = []
+    for disk in machine.disks:
+        for snapshot in disk.snapshots:
+            if snapshot not in snapshots:
+                snapshots.append(snapshot)
 
-    args.doc.applyTemplate({'vmachine': machine, 'users': users}, False)
+    args.doc.applyTemplate({'vmachine': machine,
+                            'users': users,
+                            'snapshots': snapshots,
+                            'portforwards': portforwards}, False)
     return params
 
 
