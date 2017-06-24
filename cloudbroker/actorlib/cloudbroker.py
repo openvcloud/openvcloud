@@ -548,16 +548,12 @@ class Machine(object):
         return machine.id
 
     def get(self, machine):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
-        return client.machine.get(machine.id, stack.referenceId)
+        client = getGridClient(machine.stack.location, models)
+        return client.machine.get(machine.id, machine.stack.referenceId)
 
     def getConsoleUrl(self, machine):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
         token = str(uuid.uuid4())
-        vncs = models.vnc.search({'gid': stack.gid})[1:]
+        vncs = models.VNC.objects
         if not vncs:
             raise exceptions.BadRequest("Not console output available")
         self.rcl.set('vnc:{}'.format(token), str(machine.id), ex=60)
@@ -565,14 +561,14 @@ class Machine(object):
         return "{url}{token}".format(url=vnc['url'], token=token)
 
     def getConsoleInfo(self, token):
-        machineId = int(self.rcl.get('vnc:{}'.format(token)))
-        machine = models.vmachine.get(machineId)
+        machineId = self.rcl.get('vnc:{}'.format(token)).decode()
+        if not machineId:
+            raise exceptions.NotFound("Could not find token")
+        machine = models.VMachine.get(machineId)
         machineinfo = self.get(machine)
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
-        nodeinfo = client.getNode(stack.referenceId)
-        return {'ipaddress': nodeinfo['ipaddress'], 'port': machineinfo['vnc']}
+        client = getGridClient(machine.stack.location, models)
+        nodeinfo = client.getNode(machine.stack.referenceId)
+        return {'host': nodeinfo['ipaddress'], 'port': machineinfo['vnc']}
 
     def pause(self, machine):
         client = getGridClient(machine.stack.location, models)

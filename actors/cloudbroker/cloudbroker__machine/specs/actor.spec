@@ -325,7 +325,7 @@
         var:machineIds list(str),,Machine ids
         var:reason str,,Reason
 
-    method:getConsoleInfo
+    method:getConsoleInfo @method:get,post
         """
         Get Console info for machine
         """
