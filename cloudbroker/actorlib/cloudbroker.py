@@ -56,20 +56,6 @@ class CloudBroker(object):
 
         return capacityinfo[0]  # is sorted by least used
 
-    def getProvider(self, machine):
-        if machine.referenceId and machine.stackId:
-            return self.getProviderByStackId(machine.stackId)
-        return None
-
-    def chooseProvider(self, machine):
-        cloudspace = models.cloudspace.get(machine.cloudspaceId)
-        newstack = self.getBestStack(cloudspace.gid, machine.imageId)
-        if newstack == -1:
-            raise exceptions.ServiceUnavailable('Not enough resources available to start the requested machine')
-        machine.stackId = newstack['id']
-        models.vmachine.set(machine)
-        return True
-
     def getCapacityInfo(self, location, client, image=None):
         resourcesdata = list()
         activenodes = [node['id'] for node in client.getActiveNodes()]
@@ -91,13 +77,7 @@ class CloudBroker(object):
         resourcesdata.sort(key=lambda s: s.usedmemory)
         return resourcesdata
 
-    def stackImportImages(self, stackId):
-        """
-        Sync Provider images [Deletes obsolete images that are deleted from provider side/Add new ones]
-        """
-        raise NotImplemented()
-
-    def registerNetworkIdRange(self, gid, start, end, **kwargs):
+    def registerNetworkIdRange(self, locationId, start, end, **kwargs):
         """
         Add a new network idrange
         param:start start of the range
@@ -105,19 +85,18 @@ class CloudBroker(object):
         result
         """
         newrange = set(range(int(start), int(end) + 1))
-        if models.networkids.exists(gid):
-            cloudspaces = models.cloudspace.search({'$fields': ['networkId'],
-                                                    '$query': {'status': {'$in': ['DEPLOYED', 'VIRTUAL']},
-                                                               'gid': gid}
-                                                    })[1:]
+        networkids = models.NetworkIds.objects(location=locationId).first()
+        if networkids:
+            cloudspaces = models.Cloudspace.objects(status__in=['DEPLOYED', 'VIRTUAL'], location=locationId)
             usednetworkids = {space['networkId'] for space in cloudspaces}
             if usednetworkids.intersection(newrange):
-                raise exceptions.Conflict("Atleast one networkId conflicts with deployed networkids")
-            models.networkids.updateSearch({'id': gid},
-                                           {'$addToSet': {'networkids': {'$each': newrange}}})
+                raise exceptions.Conflict("Conflicting start/end range given")
+            networkids.update(add_to_set__freeeNetworkIds=newrange)
         else:
-            networkids = {'id': gid, 'networkids': newrange}
-            models.networkids.set(networkids)
+            models.NetworkIds(
+                location=locationId,
+                freeNetworkIds=list(newrange)
+            ).save()
         return True
 
     def getFreeNetworkId(self, location, **kwargs):

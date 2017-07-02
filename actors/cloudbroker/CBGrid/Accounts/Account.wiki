@@ -165,7 +165,7 @@ h3. Cloud Spaces
 {{cbspaces: accountId:$$id}}
 
 h3. Audits
-{{grid.audits accountId:$$id}}
+{{audits accountId:$$id}}
 {% else %}
 No account provided
 {% endif %}
