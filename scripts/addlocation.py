@@ -20,21 +20,6 @@ def setup(locationurl, locationname, publiccidr, gateway, startrange, endrange, 
         )
         networkids.save()
 
-    # adding sizes
-    sizes = [(512, 1), (1024, 1), (2048, 2), (4096, 2),
-             (8192, 4), (16384, 8)]
-    disksizes = [10, 20, 50, 100, 250, 500, 1000, 2000]
-    for memory, cpu in sizes:
-        size = models.Size.objects(memory=memory, vcpus=cpu).first()
-        if not size:
-            size = models.Size(
-                memory=memory,
-                vcpus=cpu
-            )
-        size.disks = disksizes
-        size.locations.append(location)
-        size.save()
-
     cidr = netaddr.IPNetwork(publiccidr)
     network = str(cidr.network)
     netmask = str(cidr.netmask)
