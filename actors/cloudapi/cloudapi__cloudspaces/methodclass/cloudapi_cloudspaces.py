@@ -446,7 +446,7 @@ class cloudapi_cloudspaces(BaseActor):
         consumedmemcapacity = 0
 
         for machine in machines:
-            consumedmemcapacity += machine.size.memory
+            consumedmemcapacity += machine.memory
 
         return consumedmemcapacity / 1024.0
 
@@ -460,7 +460,7 @@ class cloudapi_cloudspaces(BaseActor):
         """
         numcpus = 0
         for machine in machines:
-            numcpus += machine.size.vcpus
+            numcpus += machine.vcpus
 
         return numcpus
 
@@ -796,7 +796,7 @@ class cloudapi_cloudspaces(BaseActor):
         :return: True if check succeeds, otherwise raise a 400 BadRequest error
         """
         # Validate that there still remains enough public IP addresses to assign in cloudspace
-        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only('id', 'size', 'disks')
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only('id', 'memory', 'vcpus', 'disks')
         resourcelimits = cloudspace.resourceLimits
         if checkaccount:
             j.apps.cloudapi.accounts.checkAvailableMachineResources(cloudspace.account, numcpus,

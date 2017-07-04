@@ -4,9 +4,10 @@ from cloudbroker.actorlib import authenticator, enums, network
 from cloudbroker.actorlib.baseactor import BaseActor
 import time
 import re
-import os
 import requests
 import gevent
+
+ovf = None  # TODO fixme
 
 
 class RequireState(object):
@@ -496,7 +497,7 @@ class cloudapi_machines(BaseActor):
         return self._export(machineId, backupName, storageparameters)
 
     @authenticator.auth(acl={'cloudspace': set('C')})
-    def create(self, cloudspaceId, name, description, sizeId, imageId, disksize, datadisks, **kwargs):
+    def create(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, **kwargs):
         """
         Create a machine based on the available sizes, in a certain cloud space
         The user needs write access rights on the cloud space
@@ -504,29 +505,30 @@ class cloudapi_machines(BaseActor):
         :param cloudspaceId: id of cloud space in which we want to create a machine
         :param name: name of machine
         :param description: optional description
-        :param sizeId: id of the specific size
+        :param memory: amount of memory to assign to the vmachine in MiB
+        :param vcpus: amount of vcpus to assign to the vmachine
         :param imageId: id of the specific image
         :param disksize: size of base volume
         :param datadisks: list of extra data disks
         :return bool
 
         """
-        machineId = self._create(cloudspaceId, name, description, sizeId, imageId, disksize, datadisks, **kwargs)
+        machineId = self._create(cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, **kwargs)
         ctx = kwargs['ctx']
         ctx.env['tags'] += ' machineId:{}'.format(machineId)
         return machineId
 
-    def _create(self, cloudspaceId, name, description, sizeId, imageId, disksize, datadisks, stackId=None, **kwargs):
+    def _create(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, stackId=None, **kwargs):
         datadisks = datadisks or []
         cloudspace = self.models.Cloudspace.get(cloudspaceId)
 
-        size, image = self.cb.machine.validateCreate(cloudspace, name, sizeId, imageId, disksize, datadisks)
+        image = self.cb.machine.validateCreate(cloudspace, name, memory, vcpus, imageId, disksize, datadisks)
         # Validate that enough resources are available in the CU limits to create the machine
         totaldisksize = sum(datadisks + [disksize])
-        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace, size.vcpus,
-                                                                   size.memory / 1024.0, totaldisksize)
+        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace, vcpus,
+                                                                   memory / 1024.0, totaldisksize)
         machine = self.cb.machine.createModel(name, description, cloudspace, image,
-                                              size, disksize, datadisks)
+                                              memory, vcpus, disksize, datadisks)
         try:
             self.cb.netmgr.update(cloudspace)
             self.cb.machine.create(machine, cloudspace, image, stackId)
@@ -616,7 +618,7 @@ class cloudapi_machines(BaseActor):
         if not cloudspaceId:
             raise exceptions.BadRequest('Please specify a cloudsapce ID.')
         fields = ['id', 'referenceId', 'cloudspace', 'hostName', 'image', 'name',
-                  'nics', 'size', 'status', 'stack', 'disks', 'creationTime', 'updateTime']
+                  'nics', 'memory', 'vcpus', 'status', 'stack', 'disks', 'creationTime', 'updateTime']
 
         user = ctx.env['beaker.session']['user']
         userobj = j.portal.tools.server.active.auth.getUserInfo(user)

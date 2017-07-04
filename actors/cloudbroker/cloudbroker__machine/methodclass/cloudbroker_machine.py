@@ -1,5 +1,4 @@
 from js9 import j
-from cloudbroker.actorlib import authenticator
 from cloudbroker.actorlib.baseactor import BaseActor
 from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal.async import async
@@ -27,20 +26,21 @@ class cloudbroker_machine(BaseActor):
                                                        imageId=imageId, disksize=disksize, datadisks=datadisks)
 
     @auth(['level1', 'level2', 'level3'])
-    def createOnStack(self, cloudspaceId, name, description, sizeId, imageId, disksize, stackId, datadisks, **kwargs):
+    def createOnStack(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, stackId, datadisks, **kwargs):
         """
         Create a machine on a specific stackid
         param:cloudspaceId id of space in which we want to create a machine
         param:name name of machine
         param:description optional description
-        param:sizeId id of the specific size
+        :param memory: amount of memory to assign to the vmachine in MiB
+        :param vcpus: amount of vcpus to assign to the vmachine
         param:imageId id of the specific image
         param:disksize size of base volume
         param:stackid id of the stack
         param:datadisks list of disk sizes
         result bool
         """
-        return j.apps.cloudapi.machines._create(cloudspaceId, name, description, sizeId, imageId, disksize, datadisks, stackId)
+        return j.apps.cloudapi.machines._create(cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, stackId)
 
     def _validateMachineRequest(self, machineId):
         vmachine = self.models.VMachine.get(machineId)
@@ -465,8 +465,8 @@ class cloudbroker_machine(BaseActor):
         """
         Delete a user from the account
         """
-        return self.cb.actors.cloudapi.machines.deleteUser(machineId=machineId, userId=userId)
+        return self.cb.actors.cloudapi.machines.deleteUser(machineId=machineId, userId=username)
 
     @auth(['level1', 'level2', 'level3'])
-    def resize(self, machineId, sizeId, **kwargs):
-        return self.cb.actors.cloudapi.machines.resize(machineId=machineId, sizeId=sizeId)
+    def resize(self, machineId, memory, vcpus, **kwargs):
+        return self.cb.actors.cloudapi.machines.resize(machineId=machineId, memory=memory, vcpus=vcpus)

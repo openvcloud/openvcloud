@@ -23,7 +23,7 @@ h2. Virtual Machine: ${vmachine.name}
 {% if vmachine.accounts -%}
 |*Initial Credentials*| {{html: <span class="margin-right-xlarge"><strong>Login:</strong> ${vmachine.accounts[0].login}</span> <strong>Password:</strong> ${vmachine.accounts[0].password}}}|
 {% endif -%}
-|*Size*| {{html: <span class="margin-right-xlarge"><strong>VCPUS:</strong> ${vmachine.size.vcpus}</span> <strong>Memory:</strong> ${vmachine.size.memory} MB}}|
+|*Size*| {{html: <span class="margin-right-xlarge"><strong>VCPUS:</strong> ${vmachine.vcpus}</span> <strong>Memory:</strong> ${vmachine.memory} MB}}|
 |*Image*| [${vmachine.image.name}|image?id=${vmachine.image.referenceId}]|
 |*Status*| ${vmachine.status}|
 |*Host Name*| ${vmachine.hostName}|

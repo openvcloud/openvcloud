@@ -134,15 +134,6 @@ class ExternalNetwork(ModelBase):
     location = fields.ReferenceField(Location)
 
 
-class Size(ModelBase):
-    name = fields.StringField()
-    memory = fields.IntField()
-    vcpus = fields.IntField()
-    description = fields.StringField()
-    locations = fields.ListField(fields.ReferenceField(Location))
-    disks = fields.ListField(fields.IntField())
-
-
 class VNC(ModelBase):
     url = fields.StringField()
 
@@ -214,7 +205,8 @@ class Macaddress(ModelBase):
 class VMachine(ModelBase):
     name = fields.StringField(required=True)
     description = fields.StringField()
-    size = fields.ReferenceField(Size)
+    memory = fields.IntField(required=True)
+    vcpus = fields.IntField(required=True)
     image = fields.ReferenceField(Image)
     disks = fields.ListField(fields.ReferenceField(Disk))
     nics = fields.EmbeddedDocumentListField(Nic)

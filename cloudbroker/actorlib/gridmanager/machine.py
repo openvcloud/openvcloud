@@ -9,7 +9,6 @@ class MachineManager(BaseManager):
         machine.referenceId = data['id']
 
     def get_machine_model(self, machine, disks=None):
-        size = machine.size
         data_disks = list()
         data_nics = list()
 
@@ -30,8 +29,8 @@ class MachineManager(BaseManager):
 
         vmid = 'vm-{}'.format(machine.id)
         data = {'id': vmid,
-                'memory': size.memory,
-                'cpu': size.vcpus,
+                'memory': machine.memory,
+                'cpu': machine.vcpus,
                 'nics': data_nics,
                 'disks': data_disks,
                 }

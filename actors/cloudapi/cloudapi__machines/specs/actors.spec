@@ -11,7 +11,8 @@
         var:cloudspaceId str,,id of cloud space in which we want to create a machine
         var:name str,,name of machine @tags validator:name
         var:description str,,optional description @tags: optional
-        var:sizeId str,,id of the specific size
+        var:memory int,,amount of memory to assign to the vmachine in MiB
+        var:vcpus int,,amount of vcpus to assign to the vmachine
         var:imageId str,, id of the specific image
         var:disksize int,, size of base volume
         var:datadisks list(int),, list of extra data disks in gigabytes  @optional

@@ -10,17 +10,10 @@ def main(j, args, params, tags, tasklet):
     cloudspace = models.Cloudspace.get(cloudspaceId)
     stacks = models.Stack.objects(location=cloudspace.location, status='ENABLED')
 
-    sizes = list(models.Size.objects)
     images = actors.images.list(accountId=cloudspace.account.id, cloudspaceId=cloudspace.id)
-    dropsizes = list()
-    dropdisksizes = list()
     dropimages = list()
     dropstacks = list()
-    disksizes = set()
     dropstacks.append(('Auto', ''))
-
-    def sizeSorter(size):
-        return size['memory']
 
     def imageSorter(image):
         return image['type'] + image['name']
@@ -31,13 +24,6 @@ def main(j, args, params, tags, tasklet):
     for image in sorted(images, key=imageSorter):
         dropimages.append(("%(type)s: %(name)s" % image, image['id']))
 
-    for size in sorted(sizes, key=sizeSorter):
-        disksizes.update(size['disks'])
-        dropsizes.append(("%(memory)s MB,    %(vcpus)s core(s)" % size, size['id']))
-
-    for size in sorted(disksizes):
-        dropdisksizes.append(("%s GB" % size, str(size)))
-
     for stack in sorted(stacks, key=sortName):
         dropstacks.append((stack['name'], stack['id']))
 
@@ -45,10 +31,11 @@ def main(j, args, params, tags, tasklet):
                   submit_url='/restmachine/cloudbroker/machine/createOnStack')
     popup.addText('Machine Name', 'name', required=True)
     popup.addText('Machine Description', 'description', required=True)
-    popup.addDropdown('Choose CPU Node', 'stackId', dropstacks)
     popup.addDropdown('Choose Image', 'imageId', dropimages)
-    popup.addDropdown('Choose Size', 'sizeId', dropsizes)
-    popup.addDropdown('Choose Disk Size', 'disksize', dropdisksizes)
+    popup.addNumber('Number of VCPUS', 'vcpus', required=True)
+    popup.addNumber('Amount of Memory in MiB', 'memory', required=True)
+    popup.addNumber('Choose Disk Size in MiB', 'disksize', required=True)
+    popup.addDropdown('Choose CPU Node', 'stackId', dropstacks)
     popup.addHiddenField('cloudspaceId', cloudspaceId)
     popup.write_html(page)
 
