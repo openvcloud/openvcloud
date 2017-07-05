@@ -35,10 +35,11 @@ pip3 install -e .
 Add contentdir in `/optvar/cfg/portals/main/config.yaml`:  
 `contentdirs:  '/opt/code/docs.greenitglobe.com/openvcloud/openvcloud/actors'`
 
+Also check the [config](config.md) for specific OpenvCloud configuration
 
 Restart portal:
 ```
-js9 'j.tools.prefab.local.apps.portal.start(); j.tools.prefab.local.apps.portal.stop()'
+js9 'j.tools.prefab.local.apps.portal.stop(); j.tools.prefab.local.apps.portal.start()'
 ```
 
 ## Initialize database
