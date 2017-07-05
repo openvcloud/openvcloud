@@ -13,8 +13,8 @@ def main(j, args, params, tags, tasklet):
     popup.addText('Gateway IP Address', 'gateway', required=True)
     popup.addText('Start IP Address', 'startip', required=True)
     popup.addText('End IP Address', 'endip', required=True)
-    popup.addNumber('VLAN Tag (leave empty if its the standard public bridge)', 'vlan', required=False)
-    popup.addNumber('AccountId (make external network exclusive to this accountId otherwise leave empty)', 'accountId', required=False)
+    popup.addNumber('VLAN Tag', 'vlan', required=True)
+    popup.addText('AccountId (make external network exclusive to this accountId otherwise leave empty)', 'accountId', required=False)
     popup.addDropdown('Choose Location', 'locationId', [(location.name, str(location.id)) for location in locations])
     popup.write_html(page)
 

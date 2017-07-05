@@ -18,7 +18,7 @@
         var:startip str,, First IP Address from the range to add
         var:endip str,, Last IP Address from the range to add
         var:locationId str,, id of the location
-        var:vlan int,,VLAN Tag @optional
+        var:vlan int,,VLAN Tag
         var:accountId str,,accountId that has exclusive access to this network Tag @optional
         result:int
 
