@@ -248,11 +248,12 @@ class cloudapi_machines(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method reset")
 
-    def resize(self, machineId, sizeId, **kwargs):
+    def resize(self, machineId, memory, vcpus, **kwargs):
         """
         Change the size of a machine
         param:machineId id of machine to resize
-        param:sizeId new sizeId
+        param:memory new memory in MiB
+        param:vcpus new amount of vcpus
         result bool
         """
         #put your code here to implement this method

@@ -602,8 +602,9 @@ class cloudapi_machines(BaseActor):
                        'canBeDeleted'], 'right': ''.join(sorted(ace['right'])), 'status': ace['status']})
         return {'id': str(machine.id), 'cloudspaceid': str(machine.cloudspace.id), 'acl': acl, 'disks': disks,
                 'name': machine.name, 'description': machine.description, 'hostname': machine.hostName,
-                'status': machine.status, 'imageid': str(machine.image.id), 'osImage': osImage, 'sizeid': str(machine.size.id),
-                'interfaces': machinedict['nics'], 'storage': storage, 'accounts': machinedict['accounts'], 'locked': locked,
+                'status': machine.status, 'imageid': str(machine.image.id), 'osImage': osImage,
+                'memory': machine.memory, 'vcpus': machine.vcpus, 'interfaces': machinedict['nics'],
+                'storage': storage, 'accounts': machinedict['accounts'], 'locked': locked,
                 'updateTime': updateTime, 'creationTime': creationTime}
 
     # Authentication (permissions) are checked while retrieving the machines
@@ -1032,26 +1033,26 @@ class cloudapi_machines(BaseActor):
 
     @authenticator.auth(acl={'cloudspace': set('X')})
     @RequireState(enums.MachineStatus.halted, 'Can only resize a halted Virtual Machine')
-    def resize(self, machineId, sizeId, **kwargs):
-        provider, node, vmachine = self.cb.getProviderAndNode(machineId)
-        bootdisks = self.models.disk.search({'id': {'$in': vmachine.disks}, 'type': 'B'})[1:]
-        if len(bootdisks) != 1:
-            raise exceptions.Error('Failed to retreive first disk')
-        bootdisk = self.models.disk.get(bootdisks[0]['id'])
-        size = self.models.size.get(sizeId)
-        providersize = provider.getSize(size, bootdisk)
+    def resize(self, machineId, memory, vcpus, **kwargs):
+        machine = self._get(machineId)
 
-        # Validate that enough resources are available in the CU limits if size will be increased
-        oldsize = self.models.size.get(vmachine.sizeId)
         # Calcultate the delta in memory and vpcu only if new size is bigger than old size
-        deltacpu = max(size.vcpus - oldsize.vcpus, 0)
-        deltamemory = max((size.memory - oldsize.memory) / 1024.0, 0)
-        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(vmachine.cloudspaceId,
+        updatekwargs = {}
+        memory = memory or 0
+        vcpus = vcpus or 0
+        if not vcpus and not memory:
+            return True
+        if memory:
+            updatekwargs['memory'] = memory
+        if vcpus:
+            updatekwargs['vcpus'] = vcpus
+        deltacpu = max(vcpus - machine.vcpus, 0)
+        deltamemory = max((memory - machine.memory) / 1024.0, 0)
+        j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(machine.cloudspace,
                                                                    numcpus=deltacpu,
                                                                    memorysize=deltamemory)
-        provider.client.ex_resize(node=node, size=providersize)
-        vmachine.sizeId = sizeId
-        self.models.vmachine.set(vmachine)
+        machine.modify(**updatekwargs)
+        self.cb.machine.update(machine)
         return True
 
     @authenticator.auth(acl={'cloudspace': set('X')})

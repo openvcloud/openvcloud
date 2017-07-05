@@ -252,11 +252,12 @@ class cloudbroker_machine(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method rebootMachines")
 
-    def resize(self, machineId, sizeId, **kwargs):
+    def resize(self, machineId, memory, vcpus, **kwargs):
         """
         Change memory and vcpu from machine
         param:machineId ID of machine
-        param:sizeId new sizeId
+        param:memory amount of memory to assign to the vmachine in MiB
+        param:vcpus amount of vcpus to assign to the vmachine
         result bool
         """
         #put your code here to implement this method

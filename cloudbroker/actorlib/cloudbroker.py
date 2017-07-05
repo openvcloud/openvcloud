@@ -70,7 +70,7 @@ class CloudBroker(object):
                 # search for all vms running on the stacks
                 usedvms = models.VMachine.objects(stack=stack, status__nin=MACHINE_INVALID_STATES)
                 if usedvms:
-                    stack.usedmemory = sum(vm.size.memory for vm in usedvms)
+                    stack.usedmemory = sum(vm.memory for vm in usedvms)
                 else:
                     stack.usedmemory = 0
                 resourcesdata.append(stack)

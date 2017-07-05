@@ -199,7 +199,8 @@
         Change the size of a machine
         """
         var:machineId str,, id of machine to resize
-        var:sizeId int,,new sizeId
+        var:memory int,,new memory in MiB @optional
+        var:vcpus int,,new amount of vcpus @optional
         result:bool
 
     method:clone

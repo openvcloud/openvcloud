@@ -1,4 +1,4 @@
 # OpenvCloud
 
-[install](install.md)
-[config](configuration.md)
+* [install](install.md)
+* [config](configuration.md)
