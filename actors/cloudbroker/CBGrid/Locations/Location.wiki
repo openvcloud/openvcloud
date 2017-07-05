@@ -42,41 +42,7 @@ h3. Location: ${name}
   data:
    locationId: ${id}
 
-- display: Add New VM Size
-  action: /restmachine/cloudbroker/iaas/addSize
-  data:
-   gid: ${gid}
-  input:
-  - label: Name of the size
-    name: name
-    type: text
-    placeholder: required
-    required: true
-
-  - label: Number of vcpus
-    name: vcpus
-    type: number
-    placeholder: required
-    required: true
-
-  - label: Memory in MB
-    name: memory
-    type: number
-    placeholder: required
-    required: true
-
-  - label: Sizes of bootdisk in GB
-    name: disksize
-    type: text
-    placeholder: comma , sperated, ints
-    required: true
-
-- display: Delete Unused VM Size
-  action: "#deletesize"
-
 }}
-
-{{ deletesize }}
 
 @row
 

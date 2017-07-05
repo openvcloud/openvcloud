@@ -47,4 +47,4 @@ class cloudbroker_location(BaseActor):
             location=location,
             freeNetworkIds=list(range(1, 1000))
         ).save()
-        return 'Location has been added successfully, do not forget to add networkids and public IPs'
+        return 'Location has been added successfully, do not forget to add and External Network'
