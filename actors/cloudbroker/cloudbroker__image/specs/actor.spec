@@ -7,11 +7,12 @@
         create image
         """
         var:name str,,name of the image @index
-        var:locationId str,,location of the image.
-        var:description str,,extra description of the image @optional 
+        var:description str,,extra description of the image @optional
         var:size int,, minimal disk size in Gigabyte @optional
         var:accountId str,,id of account to which this image belongs @optional
         var:type str,, type of image @optional
+        var:username str,, default username for image image @optional
+        var:password str,, default password for image @optional
         var:referenceId str,,Path of image on storage server
         result:int
 

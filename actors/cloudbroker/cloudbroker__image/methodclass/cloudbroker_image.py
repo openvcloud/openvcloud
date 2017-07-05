@@ -1,4 +1,3 @@
-from js9 import j
 from JumpScale9Portal.portal import exceptions
 from JumpScale9Portal.portal.auth import auth
 from cloudbroker.actorlib.baseactor import BaseActor
@@ -16,29 +15,31 @@ class cloudbroker_image(BaseActor):
         return cbimage
 
     @auth(['level1', 'level2', 'level3'])
-    def create(self, name, gid, description, size, accountId, type, referenceId, **kwargs):
+    def create(self, name, description, size, accountId, username, password, type, referenceId, **kwargs):
         """
         create an image
         param:name ,,  Image Name
-        param:gid ,,grid id
         param:description ,, description of image
         param:size ,, minimal disk size in Gigabyte
+        param:username default username for image image
+        param:password default password for image
         param:accountId ,, Id of account to which this image belongs
         param:referenceId ,, Path of the image on the storage server
         result int
         """
-        if self.models.location.count({'gid': gid}) == 0:
-            raise exceptions.BadRequest("Location with gid {} does not exists".format(gid))
-        image = self.models.image.new()
-        image.name = name
-        image.gid = gid
-        image.size = size
-        image.description = description
-        image.accountId = accountId or 0
-        image.status = 'ENABLED'
-        image.type = type
-        image.referenceId = referenceId
-        return self.models.image.set(image)[0]
+        image = self.models.Image(
+            name=name,
+            size=size,
+            description=description,
+            account=accountId or None,
+            status='ENABLED',
+            type=type,
+            username=username or '',
+            password=password or '',
+            referenceId=referenceId
+        )
+        image.save()
+        return str(image.id)
 
     @auth(['level1', 'level2', 'level3'])
     def delete(self, imageId, **kwargs):

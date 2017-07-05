@@ -1,8 +1,23 @@
+from JumpScale import j
 from cloudbroker.data import Models
 import netaddr
 
 
 def setup(locationurl, locationname, publiccidr, gateway, startrange, endrange, vlan):
+    # ensure groups
+    sysmodels = j.portal.tools.models.system
+    groupnames = ['level1', 'level2', 'level3']
+    for groupname in groupnames:
+        if sysmodels.Group.objects(name=groupname).count() == 0:
+            sysmodels.Group(name=groupname).save()
+    # add groups to admin user
+    adminuser = sysmodels.User.objects(name='admin').first()
+    if adminuser:
+        for groupname in groupnames:
+            if groupname not in adminuser.groups:
+                adminuser.groups.append(groupname)
+        adminuser.save()
+
     models = Models()
     location = models.Location.objects(name=locationname, apiUrl=locationurl).first()
     if not location:
@@ -38,7 +53,8 @@ def setup(locationurl, locationname, publiccidr, gateway, startrange, endrange, 
 
     # add default images
     images = [
-        ('Ubuntu 1604', 'ardb:///template:ubuntu-1604', 10, 'Linux', 'gig', 'rooter'),
+        ('Ubuntu 1604', 'ardb:///template:ubuntu-1604', 10, 'Linux', None, None),
+        ('Ubuntu 1604 GIG', 'ardb:///template:ovc:ubuntu-1604', 10, 'Linux', 'gig', 'rooter'),
         ('Lede 17.01', 'ardb:///template:lede-1701', 1, 'Linux', None, None)
     ]
     disksizes = [10, 20, 50, 100, 250, 500, 1000, 2000]

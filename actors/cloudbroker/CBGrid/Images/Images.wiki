@@ -2,7 +2,7 @@
 
 h3. Images:
 
-{{actions: 
+{{actions:
 - display: Create New Image
   action: /restmachine/cloudbroker/image/create
   input:
@@ -10,19 +10,7 @@ h3. Images:
     label: Image Name
     type: text
   - name: description
-    label: Description 
-    type: text
-  - name: gid
-    label: Grid Id 
-    type: number
-  - name: size
-    label: Size (Min Size in Gigbytes)
-    type: number
-  - name: accountId
-    label: Account Id
-    type: number
-  - name: referenceId
-    label: Path (path on storage server)
+    label: Description
     type: text
   - name: type
     type: dropdown
@@ -34,5 +22,20 @@ h3. Images:
        value: linux
      - label: Custom
        value: Custom Templates
+  - name: referenceId
+    label: Path (path on storage server)
+    type: text
+  - name: size
+    label: Size (Min Size in Gigbytes)
+    type: number
+  - name: username
+    label: Username
+    type: text
+  - name: password
+    label: Password
+    type: text
+  - name: accountId
+    label: Account Id
+    type: number
  }}
 {{images}}
