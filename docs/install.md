@@ -36,6 +36,10 @@ Add contentdir in `/optvar/cfg/portals/main/config.yaml`:
 `contentdirs:  '/opt/code/docs.greenitglobe.com/openvcloud/openvcloud/actors'`
 
 
+Restart portal:
+```
+js9 'j.tools.prefab.local.apps.portal.start(); j.tools.prefab.local.apps.portal.stop()'
+```
 
 ## Initialize database
 
