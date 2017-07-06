@@ -3,7 +3,6 @@ from JumpScale9Portal.portal import exceptions
 import netaddr
 from JumpScale9Portal.portal.auth import auth
 from cloudbroker.actorlib.baseactor import BaseActor
-import json
 
 
 def checkIPS(network, ips):

@@ -9,7 +9,9 @@ gridclients = {}
 
 def refresh_jwt_token(token):
     headers = {'Authorization': 'bearer {}'.format(token)}
-    resp = requests.get('https://itsyou.online/v1/oauth/jwt/refresh', headers=headers)
+    params = {'validity': '3600'}
+    resp = requests.get('https://itsyou.online/v1/oauth/jwt/refresh', headers=headers, params=params)
+    resp.raise_for_status()
     return resp.content.decode()
 
 
