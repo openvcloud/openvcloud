@@ -24,12 +24,12 @@ class GridClient(object):
             def refresh_token(r, *args, **kwargs):
                 request = r.request
                 if r.status_code == 440 and not hasattr(request, 'isretry'):
-                    newtoken = refresh_token(location.apiToken)
+                    newtoken = refresh_jwt_token(location.apiToken)
                     location.update(apiToken=newtoken)
                     self.rawclient.set_auth_header('Bearer {}'.format(location.apiToken))
-                    request.headers['Authorization'] = 'Beater {}'.format(location.apiToken)
+                    request.headers['Authorization'] = 'Bearer {}'.format(location.apiToken)
                     request.isretry = True
-                    return self.rawclient.send(request)
+                    return self.rawclient.session.send(request)
 
             self.rawclient.session.hooks['response'] = refresh_token
 
