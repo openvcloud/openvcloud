@@ -16,6 +16,7 @@
         var:imageId str,, id of the specific image
         var:disksize int,, size of base volume
         var:datadisks list(int),, list of extra data disks in gigabytes  @optional
+        var:publicsshkeys list(str),, list of publicsshkeys which will be granted access to the vm @optional
         result:bool
 
 

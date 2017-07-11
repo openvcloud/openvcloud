@@ -64,7 +64,7 @@ class cloudbroker_machine(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method convertToTemplate")
 
-    def createOnStack(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, stackId, datadisks, **kwargs):
+    def createOnStack(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, stackId, datadisks, publicsshkeys, **kwargs):
         """
         Create a machine on a specific stackid
         param:cloudspaceId id of space in which we want to create a machine
@@ -76,6 +76,7 @@ class cloudbroker_machine(j.tools.code.classGetBase()):
         param:disksize size of base volume
         param:stackId id of the stack
         param:datadisks list of data disk sizes in gigabytes
+        param:publicsshkeys list of publicsshkeys which will be granted access to the vm
         result bool
         """
         #put your code here to implement this method

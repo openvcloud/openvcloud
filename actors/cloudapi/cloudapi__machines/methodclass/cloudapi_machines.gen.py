@@ -80,7 +80,7 @@ class cloudapi_machines(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method convertToTemplate")
 
-    def create(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, **kwargs):
+    def create(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, publicsshkeys, **kwargs):
         """
         Create a machine based on the available sizes, in a certain cloud space
         The user needs write access rights on the cloud space
@@ -92,6 +92,7 @@ class cloudapi_machines(j.tools.code.classGetBase()):
         param:imageId id of the specific image
         param:disksize size of base volume
         param:datadisks list of extra data disks in gigabytes
+        param:publicsshkeys list of publicsshkeys which will be granted access to the vm
         result bool
         """
         #put your code here to implement this method

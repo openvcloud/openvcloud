@@ -23,6 +23,7 @@
         var:disksize int,, size of base volume
         var:stackId str,, id of the stack @optional
         var:datadisks list(int),, list of data disk sizes in gigabytes @optional
+        var:publicsshkeys list(str),, list of publicsshkeys which will be granted access to the vm @optional
         result:bool
 
     method:stop

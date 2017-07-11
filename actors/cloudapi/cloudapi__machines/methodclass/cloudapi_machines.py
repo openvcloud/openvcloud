@@ -497,7 +497,8 @@ class cloudapi_machines(BaseActor):
         return self._export(machineId, backupName, storageparameters)
 
     @authenticator.auth(acl={'cloudspace': set('C')})
-    def create(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, **kwargs):
+    def create(self, cloudspaceId, name, description, memory, vcpus, imageId,
+               disksize, datadisks, publicsshkeys, **kwargs):
         """
         Create a machine based on the available sizes, in a certain cloud space
         The user needs write access rights on the cloud space
@@ -510,16 +511,20 @@ class cloudapi_machines(BaseActor):
         :param imageId: id of the specific image
         :param disksize: size of base volume
         :param datadisks: list of extra data disks
+        :param publicsshkeys: list of publicsshkeys which will be granted access to the vm
         :return bool
 
         """
-        machineId = self._create(cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, **kwargs)
+        machineId = self._create(cloudspaceId, name, description, memory, vcpus, imageId,
+                                 disksize, datadisks, publicsshkeys=publicsshkeys, **kwargs)
         ctx = kwargs['ctx']
         ctx.env['tags'] += ' machineId:{}'.format(machineId)
         return machineId
 
-    def _create(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, stackId=None, **kwargs):
+    def _create(self, cloudspaceId, name, description, memory, vcpus, imageId,
+                disksize, datadisks, stackId=None, publicsshkeys=None, **kwargs):
         datadisks = datadisks or []
+        publicsshkeys = publicsshkeys or []
         cloudspace = self.models.Cloudspace.get(cloudspaceId)
 
         image = self.cb.machine.validateCreate(cloudspace, name, memory, vcpus, imageId, disksize, datadisks)
@@ -527,8 +532,8 @@ class cloudapi_machines(BaseActor):
         totaldisksize = sum(datadisks + [disksize])
         j.apps.cloudapi.cloudspaces.checkAvailableMachineResources(cloudspace, vcpus,
                                                                    memory / 1024.0, totaldisksize)
-        machine = self.cb.machine.createModel(name, description, cloudspace, image,
-                                              memory, vcpus, disksize, datadisks)
+        machine = self.cb.machine.createModel(name, description, cloudspace, image, memory,
+                                              vcpus, disksize, datadisks, publicsshkeys)
         try:
             self.cb.netmgr.update(cloudspace)
             self.cb.machine.create(machine, cloudspace, image, stackId)

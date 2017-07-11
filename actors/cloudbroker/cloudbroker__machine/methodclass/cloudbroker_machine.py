@@ -26,7 +26,8 @@ class cloudbroker_machine(BaseActor):
                                                        imageId=imageId, disksize=disksize, datadisks=datadisks)
 
     @auth(['level1', 'level2', 'level3'])
-    def createOnStack(self, cloudspaceId, name, description, memory, vcpus, imageId, disksize, stackId, datadisks, **kwargs):
+    def createOnStack(self, cloudspaceId, name, description, memory, vcpus,
+                      imageId, disksize, stackId, datadisks, publicsshkeys, **kwargs):
         """
         Create a machine on a specific stackid
         param:cloudspaceId id of space in which we want to create a machine
@@ -38,9 +39,18 @@ class cloudbroker_machine(BaseActor):
         param:disksize size of base volume
         param:stackid id of the stack
         param:datadisks list of disk sizes
+        param:publicsshkeys list of publicsshkeys which will be granted access to the vm
         result bool
         """
-        return j.apps.cloudapi.machines._create(cloudspaceId, name, description, memory, vcpus, imageId, disksize, datadisks, stackId)
+        publicsshkeys = publicsshkeys or []
+        pubkeys = []
+        for key in publicsshkeys:
+            for line in key.splitlines():
+                line = line.strip()
+                if line:
+                    pubkeys.append(line)
+        return j.apps.cloudapi.machines._create(cloudspaceId, name, description, memory, vcpus,
+                                                imageId, disksize, datadisks, stackId, pubkeys)
 
     def _validateMachineRequest(self, machineId):
         vmachine = self.models.VMachine.get(machineId)

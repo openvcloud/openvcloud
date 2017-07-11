@@ -11,13 +11,19 @@ import string
 import mongolock
 import re
 import json
+import crypt
 
 models = j.portal.tools.models.cloudbroker
 MACHINE_INVALID_STATES = ['ERROR', 'DESTROYED', 'DESTROYING']
 
-
 def removeConfusingChars(input):
     return input.replace('0', '').replace('O', '').replace('l', '').replace('I', '')
+
+
+def crypt_password(password):
+    chars = string.ascii_letters + string.digits
+    randomstr = ''.join(random.choice(chars) for _ in range(16))
+    return crypt.crypt(password, '$6${}$'.format(randomstr))
 
 
 class CloudBroker(object):
@@ -325,7 +331,7 @@ class Machine(object):
         macaddr.dialect = netaddr.mac_eui48
         return str(macaddr).replace('-', ':').lower()
 
-    def createModel(self, name, description, cloudspace, image, memory, vcpus, disksize, datadisks):
+    def createModel(self, name, description, cloudspace, image, memory, vcpus, disksize, datadisks, publicsshkeys):
         datadisks = datadisks or []
         hostName = self.make_hostname(name)
 
@@ -338,7 +344,8 @@ class Machine(object):
             vcpus=vcpus,
             hostName=hostName,
             image=image,
-            type='VIRTUAL'
+            type='VIRTUAL',
+            publicsshkeys=publicsshkeys
         )
 
         def addDisk(order, size, type, name=None):
@@ -472,11 +479,13 @@ class Machine(object):
                         'chpasswd': {'expire': False}}
             for account in machine.accounts:
                 userdata['users'].append({'name': account.login,
-                                          'plain_text_passwd': account.password,
+                                          'passwd': crypt_password(account.password),
                                           'lock-passwd': False,
+                                          'ssh_authorized_keys': machine.publicsshkeys,
                                           'shell': '/bin/bash',
                                           'sudo': 'ALL=(ALL) ALL'})
             metadata = {'local-hostname': hostname}
+
         else:
             admin = machine.accounts[0]
             metadata = {'admin_pass': admin.password, 'hostname': hostname}

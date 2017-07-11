@@ -222,6 +222,7 @@ class VMachine(ModelBase):
     creationTime = fields.IntField(default=j.data.time.getTimeEpoch)
     updateTime = fields.IntField(default=j.data.time.getTimeEpoch)
     deletionTime = fields.IntField()
+    publicsshkeys = fields.ListField(fields.StringField())
     tags = fields.StringField()
 
 

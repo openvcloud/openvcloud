@@ -31,6 +31,7 @@ def main(j, args, params, tags, tasklet):
                   submit_url='/restmachine/cloudbroker/machine/createOnStack')
     popup.addText('Machine Name', 'name', required=True)
     popup.addText('Machine Description', 'description', required=True)
+    popup.addTextArea('Public SSH key to grant access one per line', 'publicsshkeys')
     popup.addDropdown('Choose Image', 'imageId', dropimages)
     popup.addNumber('Number of VCPUS', 'vcpus', required=True)
     popup.addNumber('Amount of Memory in MiB', 'memory', required=True)
