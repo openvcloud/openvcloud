@@ -73,9 +73,3 @@
         """
         var:externalnetworkId str,, the id of the external network
         var:freeips list,, list of ips to mark as free in the subnet
-
-    method:syncAvailableSizesToCloudbroker
-        """
-        synchronize IaaS Sizes/flavors from the libcloud model to the cloudbroker model
-        """
-        result:boolean

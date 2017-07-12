@@ -76,17 +76,15 @@ class cloudbroker_computenode(BaseActor):
         for node, status in nodes:
             nodeid = node['id']
             stack = self.models.Stack.objects(referenceId=nodeid, location=location).first()
+            state = 'ENABLED' if status else 'INACTIVE'
             if stack:
-                if status:
-                    stack.modify(status='ENABLED')
-                else:
-                    stack.modify(status='INACTIVE')
+                stack.modify(status=state)
             else:
                 stack = self.models.Stack(
                     name=node['hostname'] or node['id'],
                     referenceId=node['id'],
                     type='Zero-OS',
-                    status='ENABLED',
+                    status=state,
                     description='Zero-OS',
                     location=location
                 )

@@ -194,14 +194,3 @@ class cloudbroker_iaas(BaseActor):
         for stack in stacks:
             self.cb.stackImportImages(stack)
         return True
-
-    @auth(['level1', 'level2', 'level3'])
-    def syncAvailableSizesToCloudbroker(self, **kwargs):
-        """
-        synchronize IaaS Images from the libcloud model and cpunodes to the cloudbroker model
-        result boolean
-        """
-        stacks = self.models.stack.list()
-        for stack in stacks:
-            self.cb.stackImportSizes(stack)
-        return True
