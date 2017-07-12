@@ -35,7 +35,7 @@ pip3 install -e .
 Add contentdir in `/optvar/cfg/portals/main/config.yaml`:  
 `contentdirs:  '/opt/code/docs.greenitglobe.com/openvcloud/openvcloud/actors'`
 
-Also check the [config](config.md) for specific OpenvCloud configuration
+Also check the [config](configuration.md) for specific OpenvCloud configuration
 
 Restart portal:
 ```
