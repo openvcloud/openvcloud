@@ -25,7 +25,7 @@ class GridClient(object):
                 request = r.request
                 if r.status_code == 440 and not hasattr(request, 'isretry'):
                     newtoken = refresh_jwt_token(location.apiToken)
-                    location.update(apiToken=newtoken)
+                    location.modify(apiToken=newtoken)
                     self.rawclient.set_auth_header('Bearer {}'.format(location.apiToken))
                     request.headers['Authorization'] = 'Bearer {}'.format(location.apiToken)
                     request.isretry = True
