@@ -30,7 +30,7 @@ def main(j, args, params, tags, tasklet):
     popup.addText('Username for Link', 'username')
     popup.addText('Password for Link', 'passwd', type='password')
     popup.addNumber('Amount of Memory in MiB', 'memory', required=True)
-    popup.addNumber('Choose Disk Size in MiB', 'disksize', required=True)
+    popup.addNumber('Choose Disk Size in GiB', 'disksize', required=True)
     popup.addHiddenField('cloudspaceId', cloudspaceId)
     popup.write_html(page)
 

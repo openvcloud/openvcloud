@@ -69,11 +69,11 @@ class cloudbroker_iaas(BaseActor):
         return usedips
 
     def deleteExternalNetwork(self, externalnetworkId, **kwargs):
-        if not self.models.externalnetwork.exists(externalnetworkId):
+        if not self.models.ExternalNetwork.exists(externalnetworkId):
             raise exceptions.NotFound("Could not find external network with id %s" % externalnetworkId)
-        cloudCount = self.models.cloudspace.count({'externalnetworkId': externalnetworkId, 'status': {'$ne': 'DESTROYED'}})
+        cloudCount = self.models.Cloudspace.objects(externalnetwork=externalnetworkId, status__ne='DESTROYED').count()
         if cloudCount == 0:
-            self.models.externalnetwork.delete(externalnetworkId)
+            self.models.ExternalNetwork.objects(id=externalnetworkId).delete()
         else:
             raise exceptions.Conflict("Cannot delete, external network in use")
         return True
@@ -105,10 +105,10 @@ class cloudbroker_iaas(BaseActor):
         return True
 
     def changeIPv4Gateway(self, externalnetworkId, gateway, **kwargs):
-        if not self.models.externalnetwork.exists(externalnetworkId):
+        if not self.models.ExternalNetwork.exists(externalnetworkId):
             raise exceptions.NotFound("Could not find externalnetwork with id %s" % externalnetworkId)
 
-        pool = self.models.externalnetwork.get(externalnetworkId)
+        pool = self.models.ExternalNetwork.get(externalnetworkId)
         try:
             net = netaddr.IPNetwork("{}/{}".format(pool.network, pool.subnetmask))
             if not checkIPS(net, [gateway]):
@@ -117,32 +117,32 @@ class cloudbroker_iaas(BaseActor):
             raise exceptions.BadRequest(e.message)
 
         pool.gateway = gateway
-        self.models.externalnetwork.set(pool)
+        pool.save()
 
     def removeExternalIPs(self, externalnetworkId, freeips, **kwargs):
         """
         Remove public ips from an existing range
         """
         ctx = kwargs["ctx"]
-        if not self.models.externalnetworkId.exists(externalnetworkId):
+        if not self.models.ExternalNetwork.exists(externalnetworkId):
             ctx.start_response("404 Not Found")
             return "Could not find externalnetwork with subnet %s" % externalnetworkId
-        pool = self.models.externalnetwork.get(externalnetworkId)
+        pool = self.models.ExternalNetwork.get(externalnetworkId)
         net = netaddr.IPNetwork("{}/{}".format(pool.network, pool.subnetmask))
         if not checkIPS(net, freeips):
             ctx.start_response("400 Bad Request")
             return "One or more IP Addresses %s is not in subnet %s" % (net)
         pool.pubips = list(set(pool.pubips) - set(freeips))
-        self.models.externalnetwork.set(pool)
+        pool.save()
         return True
 
     def removeExternalIP(self, externalnetworkId, ip, **kwargs):
         """
         Remove External IP Addresses
         """
-        if not self.models.externalnetwork.exists(externalnetworkId):
+        if not self.models.ExternalNetwork.exists(externalnetworkId):
             raise exceptions.NotFound("Could not find externalnetwork with id %s" % externalnetworkId)
-        self.models.externalnetwork.updateSearch({'id': externalnetworkId}, {'$pull': {'ips': ip}})
+        self.models.ExternalNetwork.objects(id=externalnetworkId).update_one(pull__ips=ip)
         return True
 
     @auth(['level1', 'level2', 'level3'])

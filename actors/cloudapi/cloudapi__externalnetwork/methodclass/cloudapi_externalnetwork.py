@@ -10,5 +10,5 @@ class cloudapi_externalnetwork(BaseActor):
         """
         query = {}
         if accountId:
-            query['accountId'] = {'$in': [None, accountId, 0]}
-        return self.models.externalnetwork.search({'$query': query, '$fields': ['id', 'name']})[1:]
+            query['account__in'] = [None, accountId, 0]
+        return self.models.ExternalNetwork.objects(*query).values_list('id', 'name')

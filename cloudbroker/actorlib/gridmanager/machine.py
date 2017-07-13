@@ -23,7 +23,6 @@ class MachineManager(BaseManager):
         for disk in disks:
             clusterId, volId = disk.referenceId.split(':')
             data_disks.append({'maxIOps': disk.iops,
-                               'storageclusterid': clusterId,
                                'vdiskid': volId
                                })
 

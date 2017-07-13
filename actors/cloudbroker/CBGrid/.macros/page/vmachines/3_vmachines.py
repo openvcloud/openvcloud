@@ -23,7 +23,10 @@ def main(j, args, params, tags, tasklet):
         filters['cloudspace'] = {'$in': [cs.id for cs in cloudspaces]}
 
     def stackLinkify(row, field):
-        return '[%s|stack?id=%s]' % (row.stack.name, row.stack.id)
+        data = '' 
+        if row.stack:
+            data = '[%s|stack?id=%s]' % (row.stack.name, row.stack.id)
+        return data
 
     def nameLinkify(row, field):
         val = row[field]
