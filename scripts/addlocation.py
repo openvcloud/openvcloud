@@ -1,4 +1,4 @@
-from JumpScale import j
+from JumpScale9 import j
 from cloudbroker.data import Models
 import netaddr
 

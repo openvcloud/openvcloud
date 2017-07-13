@@ -18,7 +18,8 @@ class StorageManager(BaseManager):
                        'blocksize': 4096,
                        'id': diskid,
                        'storagecluster': cluster,
-                       'type': VDISKTYPEMAP.get(disk.type, 'boot')})
+                       'type': VDISKTYPEMAP.get(disk.type, 'boot'),
+                       })
         self.client.vdisks.CreateNewVdisk(volume)
         disk.referenceId = '{}:{}'.format(cluster, diskid)
         disk.modify(referenceId=disk.referenceId)
