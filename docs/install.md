@@ -22,7 +22,7 @@ pip3 install -U "git+https://github.com/zero-os/0-orchestrator.git@${BRANCH}#sub
 
 ### Add OpenvCloud contentdir and python library
 
-Clone the openvcloud repo at a path of your choice
+1. Clone the openvcloud repo at a path of your choice
 Example:
 ```
 mkdir -p /opt/code/docs.greenitglobe.com/openvcloud
@@ -32,12 +32,12 @@ cd openvcloud
 pip3 install -e .
 ```
 
-Add contentdir in `/optvar/cfg/portals/main/config.yaml`:  
+2. Add contentdir in `/optvar/cfg/portals/main/config.yaml`:  
 `contentdirs:  '/opt/code/docs.greenitglobe.com/openvcloud/openvcloud/actors'`
 
-Also check the [config](configuration.md) for specific OpenvCloud configuration
+3. Also check the [config](configuration.md) for specific OpenvCloud configuration
 
-Restart portal:
+4. Restart portal:
 ```
 js9 'j.tools.prefab.local.apps.portal.stop(); j.tools.prefab.local.apps.portal.start()'
 ```
