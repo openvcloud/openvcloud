@@ -417,15 +417,16 @@ class cloudbroker_machine(BaseActor):
     @auth(['level1', 'level2', 'level3'])
     def createPortForward(self, machineId, localPort, destPort, proto, **kwargs):
         vmachine = self._validateMachineRequest(machineId)
-        j.apps.cloudapi.portforwarding.create(cloudspaceId=vmachine.cloudspace.id, publicIp=vmachine.cloudspace.externalnetworkip,
+        j.apps.cloudapi.portforwarding.create(cloudspaceId=vmachine.cloudspace.id,
+                                              publicIp=vmachine.cloudspace.externalnetworkip,
                                               publicPort=destPort, machineId=vmachine.id,
                                               localPort=localPort, protocol=proto)
 
     @auth(['level1', 'level2', 'level3'])
     def deletePortForward(self, machineId, publicIp, publicPort, proto, **kwargs):
         vmachine = self._validateMachineRequest(machineId)
-        cloudspace = self.models.cloudspace.get(vmachine.cloudspaceId)
-        self.cb.actors.cloudapi.portforwarding.deleteByPort(cloudspaceId=cloudspace.id, publicIp=publicIp,
+        self.cb.actors.cloudapi.portforwarding.deleteByPort(cloudspaceId=vmachine.cloudspace.id,
+                                                            publicIp=publicIp,
                                                             publicPort=publicPort, proto=proto)
 
     @auth(['level1', 'level2', 'level3'])

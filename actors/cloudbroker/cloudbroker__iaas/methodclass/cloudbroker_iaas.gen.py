@@ -102,11 +102,3 @@ class cloudbroker_iaas(j.tools.code.classGetBase()):
         """
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method syncAvailableImagesToCloudbroker")
-
-    def syncAvailableSizesToCloudbroker(self, **kwargs):
-        """
-        synchronize IaaS Sizes/flavors from the libcloud model to the cloudbroker model
-        result boolean
-        """
-        #put your code here to implement this method
-        raise NotImplementedError ("not implemented method syncAvailableSizesToCloudbroker")
