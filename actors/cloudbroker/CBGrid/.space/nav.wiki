@@ -3,11 +3,11 @@ Accounts:/cbgrid/accounts
 Cloud Spaces:/cbgrid/Cloud Spaces
 Locations:/cbgrid/locations
 Stacks:/cbgrid/Stacks
+Status Overview:/cbgrid/Status Overview
 Images:/cbgrid/images
 External Networks:/cbgrid/External Networks
 Private Networks:/cbgrid/private networks
 Users:/cbgrid/users
 Groups:/cbgrid/groups
 Virtual Machines:/cbgrid/Virtual Machines
-Storage Routers:/cbgrid/Storage Routers
 Software Versions:/cbgrid/Version

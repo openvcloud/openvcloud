@@ -1,0 +1,44 @@
+@usedefaults
+@@title Stack Status: ${stack.name}
+
+
+
+h2. Stack Status
+
+h4. [${stack.location.name}| /cbgrid/location?id=${stack.location.id}]: [${stack.name} | /cbgrid/stack?id=${stack.id}]
+
+{{stackstatus id:$$id}}
+
+{{cssstyle
+	.table-condensed>tbody>tr>td{
+		width: 75%;
+	}
+}}
+{{html:
+<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+{% for categoryname, category in categories.items() %}
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading${categoryname}">
+      <h4 class="panel-title">
+        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#${categoryname}" aria-expanded="true" aria-controls="collapseOne">
+          ${categoryname}
+          <span class="label label-${category.label} pull-right status-label">${category.status}</span>
+        </a>
+      </h4>
+    </div>
+    <div id="${categoryname}" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading${categoryname}">
+      <div class="panel-body">
+}}
+||Message|| KB ||Status||
+{% for message in category.messages -%}
+| ${message.message} | N/A | {{html: <span class="label label-${message.label} pull-right status-label">${message.status}</span> }} |
+{% endfor %}
+
+{{html:
+      </div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+}}
