@@ -70,6 +70,7 @@ h3. Stack: ${name}
 
 * *Description*: ${descr}
 * *ReferenceId*: ${referenceId}
+* *Statistics*: [Statistics|/cbgrid/Statistics?id=${id}]
 {% if eco -%}
 * *Status*: [${status}|/grid/Error Condition?id=${eco}]
 {% else -%}
@@ -79,6 +80,10 @@ h3. Stack: ${name}
 h3. Images:
 
 {{images: stackid:${id}}}
+
+h3. CPU, Memory Statistics:
+
+{{grafana: width:'49%' height:'275px' location:${locationId} node:${referenceId} panels:'8,1'}}
 
 h3. Virtual Machines:
 

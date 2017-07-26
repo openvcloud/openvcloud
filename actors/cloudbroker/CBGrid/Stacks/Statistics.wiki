@@ -1,0 +1,14 @@
+@usedefault
+@@title Statistics: ${name}
+{{stack_data}}
+{% if id %}
+
+{{grafana: width:'49%' height:'275px' location:${locationId} node:${referenceId} panels:'1,2'}}
+{{grafana: width:'49%' height:'275px' location:${locationId} node:${referenceId} panels:'8,9'}}
+{{grafana: width:'49%' height:'275px' location:${locationId} node:${referenceId} panels:'4,5'}}
+{{grafana: width:'49%' height:'275px' location:${locationId} node:${referenceId} panels:'6,7'}}
+{{grafana: width:'24.5%' height:'275px' location:${locationId} node:${referenceId} panels:'10,11,12,13'}}
+
+{% else %}
+No Stack provided
+{% endif %}

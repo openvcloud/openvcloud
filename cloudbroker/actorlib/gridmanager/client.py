@@ -1,6 +1,7 @@
 from .storage import StorageManager
 from .net import NetworkManager
 from .machine import MachineManager
+from .graph import GraphManager
 from zeroos.orchestrator.client import APIClient
 import requests
 
@@ -37,6 +38,7 @@ class GridClient(object):
         self._network = None
         self._storage = None
         self._machine = None
+        self._graph = None
 
     @property
     def network(self):
@@ -49,6 +51,12 @@ class GridClient(object):
         if not self._machine:
             self._machine = MachineManager(self.rawclient, self.models)
         return self._machine
+
+    @property
+    def graph(self):
+        if not self._graph:
+            self._graph = GraphManager(self.rawclient, self.models)
+        return self._graph
 
     @property
     def storage(self):
