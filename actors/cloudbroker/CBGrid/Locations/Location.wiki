@@ -87,7 +87,7 @@ h3. Stacks
 {{stacks locationid:${id}}}
 
 h3. External Networks
-{{externalnetworks locationid:${id}}}
+{{externalnetworks locationId:${id}}}
 
 h3. Virtual Machines
 {{vmachines locationid:${id}}}
