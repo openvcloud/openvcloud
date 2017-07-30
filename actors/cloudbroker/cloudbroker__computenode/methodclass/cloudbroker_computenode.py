@@ -73,9 +73,10 @@ class cloudbroker_computenode(BaseActor):
             raise exceptions.BadRequest("Invalid location passed")
         gc = getGridClient(location, self.models)
         nodes = gc.getNodes()
+        locationstacks = {stack.referenceId: stack for stack in self.models.Stack.objects(location=location)}
         for node, status in nodes:
             nodeid = node['id']
-            stack = self.models.Stack.objects(referenceId=nodeid, location=location).first()
+            stack = locationstacks.pop(nodeid, None)
             state = 'ENABLED' if status else 'INACTIVE'
             if stack:
                 stack.modify(status=state)
@@ -89,6 +90,8 @@ class cloudbroker_computenode(BaseActor):
                     location=location
                 )
                 stack.save()
+        for node in locationstacks.values():
+            node.update(status='INACTIVE')
 
     @auth(['level2', 'level3'], True)
     def enableStacks(self, ids, **kwargs):
