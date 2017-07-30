@@ -210,13 +210,11 @@ class cloudbroker_account(BaseActor):
         startstate = account['status']
 
         def restorestate(eco):
-            account = self.models.account.get(accountId)
-            account.status = startstate
-            self.models.account.set(account)
+            self.models.Account.objects(id=accountId).modify(status=startstate)
 
         ctx = kwargs['ctx']
         ctx.events.runAsync(self._delete,
-                            (accountId, reason, kwargs),
+                            (str(account.id), reason, kwargs),
                             {},
                             'Deleting Account %(name)s' % account,
                             'Finished deleting Account',
@@ -225,26 +223,22 @@ class cloudbroker_account(BaseActor):
 
     def _delete(self, accountId, reason, kwargs):
         ctx = kwargs['ctx']
-        account = self.models.account.get(accountId)
+        account = self.models.Account.get(accountId)
         title = 'Deleting Account %s' % account.name
-        account.status = 'DESTROYING'
-        self.models.account.set(account)
-        query = {'accountId': accountId, 'status': {'$ne': 'DESTROYED'}}
+        account.modify(status='DESTROYING')
 
         # first delete all images and dependant vms
-        images = self.models.image.search({'accountId': accountId})[1:]
+        images = self.models.Image.objects(account=account)
         for image in images:
             ctx.events.sendMessage(title, 'Deleting Image %(name)s' % image)
-            for vm in self.models.vmachine.search({'imageId': image['id'], 'status': {'$ne': 'DESTROYED'}})[1:]:
+            for vm in self.models.Vmachine.objects(image=image, status__ne='DESTROYED'):
                 ctx.events.sendMessage(title, 'Deleting dependant Virtual Machine %(name)s' % image)
-                j.apps.cloudbroker.machine.destroy(vm['id'], reason)
-            self.cb.actors.cloudapi.images.delete(imageId=image['id'])
-        cloudspaces = self.models.cloudspace.search(query)[1:]
+                j.apps.cloudbroker.machine.destroy(vm.id, reason)
+            self.cb.actors.cloudapi.images.delete(imageId=image.id)
+        cloudspaces = self.models.Cloudspace.objects(account=account, status__ne='DESTROYED')
         for cloudspace in cloudspaces:
             j.apps.cloudbroker.cloudspace._destroy(cloudspace, reason, kwargs['ctx'])
-        account = self.models.account.get(accountId)
-        account.status = 'DESTROYED'
-        self.models.account.set(account)
+        account.modify(status='DESTROYED')
         return True
 
     @auth(['level1', 'level2', 'level3'])

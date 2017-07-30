@@ -19,6 +19,11 @@ def main(j, args, params, tags, tasklet):
             'id': 'name'
         },
         {
+            'name': 'Status',
+            'value': 'status',
+            'id': 'ststus'
+        },
+        {
             'name': 'Access Controler List',
             'value': makeACL,
             'sortable': False,
