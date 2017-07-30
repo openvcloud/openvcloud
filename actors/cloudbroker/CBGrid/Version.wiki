@@ -1,13 +1,11 @@
 @usedefault
 @@title Software Versions
 h3. JumpScale
-   * Core: {{repoversion: account:jumpscale7 repo:jumpscale_core7 provider:github}}
-   * Portal: {{repoversion: account:jumpscale7 repo:jumpscale_portal provider:github}}
+   * Core: {{repoversion: account:jumpscale repo:core9 provider:github}}
+   * Portal: {{repoversion: account:jumpscale repo:portal9 provider:github}}
+   * Lib: {{repoversion: account:jumpscale repo:lib9 provider:github}}
+   * Prefab: {{repoversion: account:jumpscale repo:prefab9 provider:github}}
 
 h3. OpenvCloud
-   * Core: {{repoversion: account:0-complexity repo:openvcloud provider:github}}
-   * G8VDC: {{repoversion: account:0-complexity repo:g8vdc provider:github}}
-   * Selfhealing: {{repoversion: account:0-complexity repo:selfhealing provider:github}}
+   * Core: {{repoversion: account:openvcloud repo:openvcloud provider:docs.greenitglobe.com}}
 
-h3. OpenvStorage:
-{{ovsversion}}

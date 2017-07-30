@@ -1,15 +1,14 @@
 def main(j, args, params, tags, tasklet):
     params.result = (args.doc, args.doc)
-    guid = args.requestContext.params.get('id')
-    if not guid:
+    userid = args.requestContext.params.get('id')
+    if not userid:
         args.doc.applyTemplate({})
         return params
 
-    if not j.apps.system.usermanager.modelUser.exists(guid):
+    user = j.portal.tools.models.system.User.get(userid)
+    if not user:
         args.doc.applyTemplate({})
         return params
 
-    obj = j.apps.system.usermanager.modelUser.get(guid).dump()
-
-    args.doc.applyTemplate(obj, True)
+    args.doc.applyTemplate(user.to_dict(), True)
     return params

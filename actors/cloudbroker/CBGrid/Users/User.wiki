@@ -1,27 +1,27 @@
 @usedefault
-@@title User: ${id}
+@@title User: ${name}
 
 {{timestamp}}
 
 {{user_info}}
-{% if id %}
-h2. User: ${id}
+{% if name %}
+h2. User: ${name}
 
 {{actions:
 - display: Edit User
   action: '#user_edit'
 
 - display: Delete
-  action: /restmachine/cloudbroker/user/delete?username=$$id
+  action: /restmachine/cloudbroker/user/delete?username=${name}
   navigateback: true
 
 - display: Send Reset Password Link
   action: /restmachine/cloudbroker/user/sendResetPasswordLink
   data:
-   username: ${id}
+   username: ${name}
    email: ${emails}
 }}
-{{user_edit: guid:$$id}}
+{{user_edit: id:$$id}}
 
 |*Groups*|${", ".join(groups)} |
 |*Emails*|${", ".join(emails)} |
@@ -30,10 +30,10 @@ h2. User: ${id}
 |*Active*|${active}|
 
 h3. Accounts
-{{accounts: acl.userGroupId:${id}}}
+{{accounts: acl.userGroupId:${name}}}
 
 h3. Cloud Spaces
-{{cbspacesusers: userId:${id}}}
+{{cbspacesusers: userId:${name}}}
 
 {% else %}
 No user found with id $$id
