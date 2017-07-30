@@ -24,9 +24,9 @@ def main(j, args, params, tags, tasklet):
             'value': 'network',
             'id': 'network'
         }, {
-            'name': 'Netmask',
-            'value': 'netmask',
-            'id': 'netmask'
+            'name': 'Subnetmask',
+            'value': 'subnetmask',
+            'id': 'subnetmask'
         }, {
             'name': 'Location',
             'value': makeLocationLink,
