@@ -1,5 +1,6 @@
 
 def main(j, args, params, tags, tasklet):
+    import time
     params.result = (args.doc, args.doc)
     from cloudbroker.actorlib.gridmanager.client import getGridClient
     models = j.portal.tools.models.cloudbroker
@@ -26,15 +27,19 @@ def main(j, args, params, tags, tasklet):
     client = getGridClient(stack.location, models)
     healthchecks = client.rawclient.health.ListNodeHealth(stack.referenceId).json()['healthchecks']
     categories = {}
-    for message in healthchecks:
-        category = message['category'] or 'Unknown'
-        catobj = categories.setdefault(category, {'status': 'OK', 'messages': []})
-        if catobj['status'] == 'OK' and message['status'] != 'OK':
-            catobj['status'] = message['status']
-        elif catobj['status'] == 'WARNING' and message['status'] == 'ERROR':
-            catobj['status'] = 'ERROR'
-        message['label'] = classmap.get(message['status'], 'default')
-        catobj['messages'].append(message)
+    for healthcheck in healthchecks:
+        category = healthcheck['category'] or 'Unknown'
+        categoryid = j.data.hash.md5_string(category)
+        catobj = categories.setdefault(categoryid, {'status': 'OK', 'healthchecks': [], 'name': category})
+        for message in healthcheck['messages']:
+            if catobj['status'] == 'OK' and message['status'] != 'OK':
+                catobj['status'] = message['status']
+            elif catobj['status'] == 'WARNING' and message['status'] == 'ERROR':
+                catobj['status'] = 'ERROR'
+            message['label'] = classmap.get(message['status'], 'default')
+        healthcheck['lasttimetext'] = j.data.time.getSecondsInHR(abs(int(time.time()) - healthcheck['lasttime']))
+        healthcheck['intervaltext'] = j.data.time.getSecondsInHR(healthcheck['interval'])
+        catobj['healthchecks'].append(healthcheck)
 
     for category in categories.values():
         category['label'] = classmap.get(category['status'], 'default')
@@ -42,7 +47,7 @@ def main(j, args, params, tags, tasklet):
     args.doc.applyTemplate({
         'stack': stack, 
         'categories': categories,
-        'colorwrap': colorwrap}, True)
+        'colorwrap': colorwrap}, False)
 
     return params
 

@@ -16,23 +16,25 @@ h4. [${stack.location.name}| /cbgrid/location?id=${stack.location.id}]: [${stack
 }}
 {{html:
 <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
-{% for categoryname, category in categories.items() %}
+{% for catid, category in categories.items() %}
   <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="heading${categoryname}">
+    <div class="panel-heading" role="tab" id="heading${catid}">
       <h4 class="panel-title">
-        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#${categoryname}" aria-expanded="true" aria-controls="collapseOne">
-          ${categoryname}
+        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#${catid}" aria-expanded="true" aria-controls="collapseOne">
+          ${category.name}
           <span class="label label-${category.label} pull-right status-label">${category.status}</span>
         </a>
       </h4>
     </div>
-    <div id="${categoryname}" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading${categoryname}">
+    <div id="${catid}" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading${catid}">
       <div class="panel-body">
 }}
-||Message|| KB ||Status||
-{% for message in category.messages -%}
-| ${message.message} | N/A | {{html: <span class="label label-${message.label} pull-right status-label">${message.status}</span> }} |
-{% endfor %}
+||Message|| KB || Last Executed || Interval ||Status||
+{% for healthcheck in category.healthchecks -%}
+{% for message in healthcheck.messages -%}
+| ${message.text} | N/A | ${healthcheck.lasttimetext} | ${healthcheck.intervaltext} | {{html: <span class="label label-${message.label} pull-right status-label">${message.status}</span> }} |
+{% endfor -%}
+{% endfor -%}
 
 {{html:
       </div>
