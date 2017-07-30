@@ -8,10 +8,9 @@ class cloudbroker_image(BaseActor):
         super(cloudbroker_image, self).__init__()
 
     def _checkimage(self, imageId):
-        cbimage = self.models.image.search({'id': imageId})[1:]
+        cbimage = self.models.Image.get(imageId)
         if not cbimage:
             raise exceptions.BadRequest('Image with id "%s" not found' % imageId)
-        cbimage = cbimage[0]
         return cbimage
 
     @auth(['level1', 'level2', 'level3'])
@@ -49,11 +48,7 @@ class cloudbroker_image(BaseActor):
         result bool
         """
         cbimage = self._checkimage(imageId)
-        cbimage['status'] = 'DESTROYED'
-        self.models.image.set(cbimage)
-        images = self.models.image.search({'referenceId': imageId})[1:]
-        for image in images:
-            self.models.stack.updateSearch({'images': image['id']}, {'$pull': {'images': image['id']}})
+        cbimage.update(status='DESTROYED')
         return True
 
     @auth(['level1', 'level2', 'level3'])
