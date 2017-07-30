@@ -114,7 +114,7 @@ class Stack(ModelBase):
     referenceId = fields.StringField(rquired=True)
     error = fields.IntField()
     eco = fields.ReferenceField(Errorcondition)
-    status = fields.StringField(choices=['DISABLED', 'ENABLED', 'ERROR', 'MAINTENANCE'])
+    status = fields.StringField(choices=['DISABLED', 'ENABLED', 'ERROR', 'MAINTENANCE', 'INACTIVE'])
     location = fields.ReferenceField(Location)
 
 
