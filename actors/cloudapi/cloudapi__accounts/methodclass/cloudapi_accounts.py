@@ -111,16 +111,6 @@ class cloudapi_accounts(BaseActor):
         """
         raise NotImplementedError("Not implemented method create")
 
-    @authenticator.auth(acl={'account': set('D')})
-    def delete(self, accountId, **kwargs):
-        """
-        Delete an account (Method not implemented)
-
-        :param accountId: id of the account
-        :return bool True if deletion was successful
-        """
-        raise NotImplementedError("Not implemented method delete")
-
     @authenticator.auth(acl={'account': set('R')})
     def get(self, accountId, **kwargs):
         """

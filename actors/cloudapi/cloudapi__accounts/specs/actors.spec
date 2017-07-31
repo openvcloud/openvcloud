@@ -15,13 +15,6 @@
         var:maxNumPublicIP int,-1, max number of assigned public IPs
         result:int, returns id of account created
 
-    method:delete
-        """
-        Delete an account (Method not implemented)
-        """
-        var:accountId str,, id of the account
-        result:bool, True if deletion was successful
-
     method:list
         """
         List all accounts the user has access to
