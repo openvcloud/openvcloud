@@ -33,6 +33,15 @@ class cloudbroker_location(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method checkVMs")
 
+    def delete(self, locationId, **kwargs):
+        """
+        Delete location
+        param:locationId id of the location
+        result 
+        """
+        #put your code here to implement this method
+        raise NotImplementedError ("not implemented method delete")
+
     def purgeLogs(self, locationId, age, **kwargs):
         """
         Remove logs & eco’s

@@ -2,7 +2,6 @@
 {{actions
 - display: Add Location
   action: /restmachine/cloudbroker/location/add
-  refresh: false
   hide: true
   showresponse: true
   input:

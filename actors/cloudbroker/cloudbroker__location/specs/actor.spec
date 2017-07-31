@@ -29,6 +29,13 @@
         var:apiToken str,, Token to authenticate with api @optional
         result: bool
 
+    method:delete
+        """
+        Delete location
+        """
+        var:locationId str,, id of the location
+        result: bool
+
     method:add
         """
         Adds a location/grid

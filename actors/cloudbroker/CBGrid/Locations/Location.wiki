@@ -42,6 +42,12 @@ h3. Location: ${name}
   data:
    locationId: ${id}
 
+- display: Delete Location
+  action: /restmachine/cloudbroker/location/delete
+  navigateback: true
+  data:
+   locationId: ${id}
+
 }}
 
 @row

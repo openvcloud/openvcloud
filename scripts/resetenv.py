@@ -9,11 +9,12 @@ def cleanup():
     for cloudspace in models.Cloudspace.objects:
         if cloudspace.networkId:
             network = models.NetworkIds.objects(location=cloudspace.location).first()
-            if cloudspace.networkId in network.usedNetworkIds:
-                network.usedNetworkIds.remove(cloudspace.networkId)
-            if cloudspace.networkId not in network.freeNetworkIds:
-                network.freeNetworkIds.append(cloudspace.networkId)
-            network.save()
+            if network:
+                if cloudspace.networkId in network.usedNetworkIds:
+                    network.usedNetworkIds.remove(cloudspace.networkId)
+                if cloudspace.networkId not in network.freeNetworkIds:
+                    network.freeNetworkIds.append(cloudspace.networkId)
+                network.save()
         if cloudspace.externalnetworkip and cloudspace.externalnetwork:
             ip = str(netaddr.IPNetwork(cloudspace.externalnetworkip).ip)
             cloudspace.externalnetwork.ips.append(ip)

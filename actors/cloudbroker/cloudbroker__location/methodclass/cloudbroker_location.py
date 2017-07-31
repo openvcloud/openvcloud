@@ -34,6 +34,23 @@ class cloudbroker_location(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
+    def delete(self, locationId, **kwargs):
+        location = self.models.Location.get(locationId)
+        if not location:
+            raise exceptions.NotFound('Could not find location with id %s' % locationId)
+        if self.models.Cloudspace.objects(location=location).count() > 0:
+            raise exceptions.BadRequest('Can not delete location which has cloud spaces.')
+        if self.models.Disk.objects(location=location).count() > 0:
+            raise exceptions.BadRequest('Can not delete location which has disks.')
+        if self.models.Stack.objects(location=location).count() > 0:
+            raise exceptions.BadRequest('Can not delete location which has stacks.')
+        self.models.ExternalNetwork.objects(location=location).delete()
+        self.models.NetworkIds.objects(location=location).delete()
+        location.delete()
+        return True
+
+
+    @auth(['level1', 'level2', 'level3'])
     def add(self, name, apiUrl, apiToken, **kwargs):
         if self.models.Location.objects(name=name).count() > 0:
             raise exceptions.Conflict("Location with name %s already exists" % name)
