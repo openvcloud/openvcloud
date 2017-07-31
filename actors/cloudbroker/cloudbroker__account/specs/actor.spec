@@ -28,7 +28,7 @@
         """
         Complete delete accounts from the system
         """"
-        var:accountIds list(int),, list of account ids to delete
+        var:accountIds list(str),, list of account ids to delete
         var:reason str,,reason for deleting the account
 
     method:addUser

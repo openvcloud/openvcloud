@@ -38,7 +38,7 @@ def main(j, args, params, tags, tasklet):
         },
     ]
 
-    tableid = modifier.addTableFromModel('cloudbroker', 'account', fields, filters, selectable='rows')
+    tableid = modifier.addTableFromModel('cloudbroker', 'Account', fields, filters, selectable='rows')
     modifier.addSearchOptions('#%s' % tableid)
     modifier.addSorting('#%s' % tableid, 1, 'desc')
 
