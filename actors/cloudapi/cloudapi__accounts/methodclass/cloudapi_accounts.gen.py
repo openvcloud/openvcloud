@@ -39,15 +39,6 @@ class cloudapi_accounts(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method create")
 
-    def delete(self, accountId, **kwargs):
-        """
-        Delete an account (Method not implemented)
-        param:accountId id of the account
-        result bool,
-        """
-        #put your code here to implement this method
-        raise NotImplementedError ("not implemented method delete")
-
     def deleteUser(self, accountId, userId, recursivedelete=False, **kwargs):
         """
         Revoke user access from the account

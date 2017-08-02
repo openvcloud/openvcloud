@@ -873,7 +873,7 @@ class cloudapi_cloudspaces(BaseActor):
         """
 
         consumedmemcapacity = 0
-        consumedmemcapacity = sum(m.size.memory for m in machines)
+        consumedmemcapacity = sum(m.memory for m in machines)
         return consumedmemcapacity / 1024.0
 
     # unexposed actor
@@ -885,7 +885,7 @@ class cloudapi_cloudspaces(BaseActor):
         :return: the total number of consumed cpu cores
         """
         numcpus = 0
-        numcpus = sum(m.size.vcpus for m in machines)
+        numcpus = sum(m.vcpus for m in machines)
         return numcpus
 
     # unexposed actor
@@ -899,14 +899,13 @@ class cloudapi_cloudspaces(BaseActor):
         numpublicips = 0
         # Add the public IP directly attached to the cloudspace
         for cloudspace in cloudspaces:
-            if cloudspace.get('externalnetworkip'):
+            if cloudspace.externalnetworkip:
                 numpublicips += 1
 
         # Add the number of machines in cloudspace that have public IPs attached to them
         cloudspaceids = [cs.id for cs in cloudspaces]
-        numpublicips += self.models.vmachine.count({'cloudspaceId': {'$in': cloudspaceids},
-                                                    'nics.type': 'PUBLIC',
-                                                    'status': {'$nin': ['DESTROYED', 'ERROR']}})
+        numpublicips += self.models.VMachine.objects(cloudspace__in=cloudspaceids, nics__type__='PUBLIC',
+                                                     status__nin=['DESTROYED', 'ERROR']).count()
         return numpublicips
 
     @authenticator.auth(acl={'cloudspace': set('X')})

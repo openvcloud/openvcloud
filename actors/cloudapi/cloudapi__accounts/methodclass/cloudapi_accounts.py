@@ -225,7 +225,7 @@ class cloudapi_accounts(BaseActor):
         elif sendAccessEmails == 0:
             sendAccessEmails = False
 
-        accountobj = self.models.account.get(accountId)
+        accountobj = self.models.Account.get(accountId)
 
         if name:
             accountobj.name = name
@@ -306,7 +306,7 @@ class cloudapi_accounts(BaseActor):
             else:
                 accountobj.resourceLimits['CU_I'] = maxNumPublicIP
 
-        self.models.account.set(accountobj)
+        accountobj.save()
         return True
 
     # Unexposed actor
@@ -381,7 +381,8 @@ class cloudapi_accounts(BaseActor):
         consumedamount = 0
         # get all cloudspaces in this account
         cloudspaces = self.models.Cloudspace.objects(account=account.id).only('id')
-        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace__in=cloudspaces).only('id', 'size')
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'],
+                                                cloudspace__in=cloudspaces).only('id', 'vcpus', 'memory')
 
         # For the following cloud unit types 'CU_S', 'CU_A', 'CU_NO', 'CU_NP', 0 will be returned
         # until proper consumption calculation is implemented
