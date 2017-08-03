@@ -226,6 +226,30 @@ class VMachine(ModelBase):
     tags = fields.StringField()
 
 
+class Flap(EmbeddedDocument):
+    status = fields.StringField(required=True, choices=['OK', 'ERROR', 'WARNING', 'SKIPPED', 'MISSING'])
+    text = fields.StringField(required=True)
+    lasttime = fields.IntField(default=j.data.time.getTimeEpoch)
+
+
+class Message(EmbeddedDocument):
+    oid = fields.StringField(required=True)
+    muteuntill = fields.IntField()
+    flaps = fields.EmbeddedDocumentListField(Flap)
+
+
+class Healthcheck(ModelBase):
+    oid = fields.StringField(required=True)
+    stack = fields.ReferenceField(Stack)
+    name = fields.StringField(required=True)
+    resource = fields.StringField(required=True)
+    category = fields.StringField(required=True)
+    lasttime = fields.IntField(default=j.data.time.getTimeEpoch)
+    interval = fields.IntField(required=True)
+    stacktrace = fields.StringField()
+    messages = fields.EmbeddedDocumentListField(Message)
+    muteuntill = fields.IntField()
+
 del Base
 del ModelBase
 del EmbeddedDocument
