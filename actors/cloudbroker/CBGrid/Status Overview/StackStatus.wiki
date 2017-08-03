@@ -2,12 +2,13 @@
 @@title Stack Status: ${stack.name}
 
 
+{{stackstatus id:$$id}}
+
+{% if stack %}
 
 h2. Stack Status
 
 h4. [${stack.location.name}| /cbgrid/location?id=${stack.location.id}]: [${stack.name} | /cbgrid/stack?id=${stack.id}]
-
-{{stackstatus id:$$id}}
 
 {{cssstyle
 	.table-condensed>tbody>tr>td{
@@ -32,7 +33,9 @@ h4. [${stack.location.name}| /cbgrid/location?id=${stack.location.id}]: [${stack
 ||Message|| KB || Last Executed || Interval ||Status||
 {% for healthcheck in category.healthchecks -%}
 {% for message in healthcheck.messages -%}
-| ${message.text} | N/A | ${healthcheck.lasttimetext} | ${healthcheck.intervaltext} | {{html: <span class="label label-${message.label} pull-right status-label">${message.status}</span> }} |
+{% if message.flaps[-1].status != 'MISSING' -%}
+| ${message.flaps[-1].text} | N/A | ${healthcheck.lasttimetext} | ${healthcheck.intervaltext} | {{html: <span class="label label-${message.label} pull-right status-label" title="Since ${message.flaps[-1].lasttimetext}">${message.flaps[-1].status}</span> }} |
+{% endif -%}
 {% endfor -%}
 {% endfor -%}
 
@@ -44,3 +47,9 @@ h4. [${stack.location.name}| /cbgrid/location?id=${stack.location.id}]: [${stack
 </div>
 
 }}
+
+{% else %}
+
+Cannot find stack
+
+{% endif %}
