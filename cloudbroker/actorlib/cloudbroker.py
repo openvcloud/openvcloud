@@ -607,9 +607,7 @@ class Machine(object):
         return getattr(enums.MachineStatus, status.lower())
 
     def rollback(self, machine, epoch):
-        stackId = machine.stackId
-        stack = models.stack.get(stackId)
-        client = getGridClient(stack.gid, models)
-        for diskId in machine.disks:
-            disk = models.disk.get(diskId)
+        stack = machine.cloudspace.stack
+        client = getGridClient(stack.location, models)
+        for disk in machine.disks:
             client.storage.rollbackVolume(disk, epoch)

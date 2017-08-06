@@ -31,5 +31,5 @@ class StorageManager(BaseManager):
 
     def rollbackVolume(self, disk, epoch):
         data = {'epoch': epoch}
-        cluster, volumeId = disk.refrenceId.split(':')
+        cluster, volumeId = disk.referenceId.split(':')
         self.client.vdisks.RollbackVdisk(data, volumeId)
