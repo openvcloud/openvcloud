@@ -46,15 +46,13 @@ class cloudbroker_account(BaseActor):
         result
         """
         account = self._checkAccount(accountId)
-        account['deactivationTime'] = time.time()
-        account['status'] = 'DISABLED'
-        self.models.account.set(account)
+        account.deactivationTime = time.time()
+        account.status = 'DISABLED'
+        account.save()
         # stop all account's machines
-        cloudspaces = self.models.cloudspace.search({'accountId': account['id']})[1:]
+        cloudspaces = self.models.Cloudspace.objects(account=account.id)
         for cs in cloudspaces:
-            vmachines = self.models.vmachine.search({'cloudspaceId': cs['id'],
-                                                     'status': {'$in': ['RUNNING', 'PAUSED']}
-                                                     })[1:]
+            vmachines = self.models.VMachine.objects(cloudspace=cs.id, status__in=['RUNNING', 'PAUSED'])
             for vmachine in vmachines:
                 self.cb.actors.cloudapi.machines.stop(machineId=vmachine['id'])
         return True
@@ -149,11 +147,11 @@ class cloudbroker_account(BaseActor):
         result
         """
         account = self._checkAccount(accountId)
-        if account['status'] != 'DISABLED':
+        if account.status != 'DISABLED':
             raise exceptions.BadRequest('Account is not disabled')
 
-        account['status'] = 'CONFIRMED'
-        self.models.account.set(account)
+        account.status = 'CONFIRMED'
+        account.save()
         return True
 
     @auth(['level1', 'level2', 'level3'])

@@ -79,6 +79,7 @@ class Account(ModelBase):
     resourceLimits = fields.DictField()
     sendAccessEmails = fields.BooleanField(default=True)
     creationTime = fields.IntField(default=j.data.time.getTimeEpoch)
+    deactivationTime = fields.IntField()
 
 
 class VMAccount(EmbeddedDocument):
