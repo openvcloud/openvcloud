@@ -705,10 +705,9 @@ class cloudapi_machines(BaseActor):
         :param machineId: id of the machine
         :param epoch: epoch time of snapshot
         """
-        machine = self.models.machine.get(machineId)
-        self.cb.machine.rollback(machine, epoch)
+        machine = self.models.VMachine.get(machineId)
+        self.cb.machine.rollback(machine, int(epoch))
         tags = str(machineId)
-        j.logger.log('Snapshot rolled back', category='machine.history.ui', tags=tags)
         return
 
     @authenticator.auth(acl={'machine': set('C')})
