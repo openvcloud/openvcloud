@@ -18,5 +18,5 @@ setup(
     author='Jo De Boeck',
     author_email='deboeckj@gig.tech',
     packages=find_packages(),
-    install_requires=['Jinja2', 'mongolock'],
+    install_requires=['Jinja2', 'mongolock', 'pycapnp'],
 )
