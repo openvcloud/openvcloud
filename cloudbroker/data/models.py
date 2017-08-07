@@ -165,7 +165,7 @@ class Cloudspace(ModelBase):
     externalnetwork = fields.ReferenceField(ExternalNetwork)
     forwardRules = fields.EmbeddedDocumentListField(ForwardRule)
     allowedVMSizes = fields.ListField(fields.IntField())
-    status = fields.StringField(choices=['VIRTUAL', 'DEPLOYED', 'DESTROYED'])
+    status = fields.StringField(choices=['VIRTUAL', 'DEPLOYED', 'DESTROYED', 'DISABLED'])
     location = fields.ReferenceField(Location)
     creationTime = fields.IntField(default=j.data.time.getTimeEpoch)
     updateTime = fields.IntField(default=j.data.time.getTimeEpoch)
