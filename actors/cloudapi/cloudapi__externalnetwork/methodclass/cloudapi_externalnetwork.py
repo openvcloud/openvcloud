@@ -1,5 +1,6 @@
 from js9 import j
 from cloudbroker.actorlib.baseactor import BaseActor
+from cloudbroker.data.models import to_python
 
 
 class cloudapi_externalnetwork(BaseActor):
@@ -9,6 +10,11 @@ class cloudapi_externalnetwork(BaseActor):
         result
         """
         query = {}
+        ext_networks = []
         if accountId:
             query['account__in'] = [None, accountId, 0]
-        return self.models.ExternalNetwork.objects(*query).values_list('id', 'name')
+        result = self.models.ExternalNetwork.objects(*query).only('id', 'name')
+        ext_networks = to_python((list(result)))
+        for ext_net in ext_networks:
+            ext_net.pop('ips')
+        return ext_networks
