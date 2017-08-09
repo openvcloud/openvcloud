@@ -274,14 +274,14 @@ class Machine(object):
         self.rcl = j.core.db
 
     def cleanup(self, machine):
-        # this method might be called by muiltiple layers so we dont care of delete fails
-        for diskid in machine.disks:
+        # this method might be called by muiltiple layers so we dont care if delete fails
+        for disk in machine.disks:
             try:
-                models.disk.delete(diskid)
+                disk.delete()
             except:
                 pass
         try:
-            models.vmachine.delete(machine.id)
+            machine.delete()
         except:
             pass
 
@@ -579,8 +579,8 @@ class Machine(object):
         return machine.id
 
     def destroy(self, machine):
+        client = getGridClient(machine.cloudspace.location, models)
         if machine.stack:
-            client = getGridClient(machine.stack.location, models)
             client.machine.destroy(machine.id, machine.stack.referenceId)
         for disk in machine.disks:
             client.storage.deleteVolume(disk)

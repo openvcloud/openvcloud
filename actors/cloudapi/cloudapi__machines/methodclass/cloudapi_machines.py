@@ -572,7 +572,7 @@ class cloudapi_machines(BaseActor):
         self.cb.machine.destroy(vmachinemodel)
 
         for disk in vmachinemodel.disks:
-            disk.delete()
+            disk.update(status='DESTROYED')
 
         return True
 

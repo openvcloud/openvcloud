@@ -20,6 +20,7 @@ def cleanup():
             cloudspace.externalnetwork.ips.append(ip)
             cloudspace.externalnetwork.save()
         cloudspace.delete()
+    models.Account.objects(status__ne='CONFIRMED').delete()
 
 
 if __name__ == '__main__':
