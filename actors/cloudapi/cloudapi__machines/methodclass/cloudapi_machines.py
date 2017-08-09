@@ -1006,34 +1006,36 @@ class cloudapi_machines(BaseActor):
     def attachExternalNetwork(self, machineId, **kwargs):
         """
          Attach a external network to the machine
-
         :param machineId: id of the machine
         :return: True if a external network was attached to the machine
         """
-        provider, node, vmachine = self.cb.getProviderAndNode(machineId)
-        for nic in vmachine.nics:
+        machine = self._get(machineId)
+        for nic in machine.nics:
             if nic.type == 'vlan':
                 return True
-        cloudspace = self.models.cloudspace.get(vmachine.cloudspaceId)
+        cloudspace = machine.cloudspace
         # Check that attaching a external network will not exceed the allowed CU limits
-        j.apps.cloudapi.cloudspaces.checkAvailablePublicIPs(vmachine.cloudspaceId, 1)
-        networkid = cloudspace.networkId
-        netinfo = self.network.getExternalIpAddress(cloudspace.gid, cloudspace.externalnetworkId)
-        if netinfo is None:
-            raise RuntimeError("No available externalnetwork IPAddresses")
-        pool, externalnetworkip = netinfo
-        if not externalnetworkip:
-            raise RuntimeError("Failed to get externalnetworkip for networkid %s" % networkid)
-        nic = vmachine.new_nic()
-        nic.ipAddress = str(externalnetworkip)
-        nic.params = j.core.tags.getTagString([], {'gateway': pool.gateway, 'externalnetworkId': str(pool.id)})
-        nic.type = 'vlan'
-        self.models.vmachine.set(vmachine)
-        iface = provider.client.attach_public_network(node, pool.vlan)
-        nic.deviceName = iface.target
-        nic.macAddress = iface.mac
-        self.models.vmachine.set(vmachine)
-        return True
+        is_available = j.apps.cloudapi.cloudspaces.checkAvailablePublicIPs(machine.cloudspace, 1)
+        if is_available:
+            networkid = cloudspace.networkId
+            netinfo = self.network.getExternalIpAddress(cloudspace.location, cloudspace.externalnetwork)
+            if netinfo is None:
+                raise RuntimeError("No available externalnetwork IPAddresses")
+            pool, externalnetworkip = netinfo
+            if not externalnetworkip:
+                raise RuntimeError("Failed to get externalnetworkip for networkid %s" % networkid)
+
+            nic = self.models.Nic(networkId=cloudspace.networkId,
+                                  ipAddress=str(externalnetworkip),
+                                  deviceName='vm-{}'.format(str(pool.id)),
+                                  macAddress = self.cb.machine.getFreeMacAddress(cloudspace.location),
+                                  param=j.data.tags.getTagString([], {'gateway': pool.gateway, 'externalnetworkId': str(pool.id)}),
+                                  type='vlan')
+            machine.nics.append(nic)
+            self.cb.machine.update(machine)
+            machine.save()
+            return True
+        return False
 
     @authenticator.auth(acl={'cloudspace': set('X')})
     @RequireState(enums.MachineStatus.halted, 'Can only resize a halted Virtual Machine')
@@ -1068,23 +1070,16 @@ class cloudapi_machines(BaseActor):
         :return: True if external network was detached from the machine
         """
 
-        provider, node, vmachine = self.cb.getProviderAndNode(machineId)
+        machine = self._get(machineId)
 
-        for nic in vmachine.nics:
-            nicdict = nic.obj2dict()
-            if 'type' not in nicdict or nicdict['type'] != 'PUBLIC':
+        for nic in machine.nics:
+            if nic.type != 'vlan':
                 continue
-
-            provider.client.detach_public_network(node)
-        self._detachExternalNetworkFromModel(vmachine)
+            machine.nics.remove(nic)
+            tags = j.data.tags.getObject(nic.param)
+            ext_net_id = tags.tags.get('externalnetworkId')
+            ext_net = self.models.ExternalNetwork.objects.get(id=ext_net_id)
+            self.network.releaseExternalIpAddress(ext_net, nic.ipAddress)
+        self.cb.machine.update(machine)
+        machine.save()
         return True
-
-    def _detachExternalNetworkFromModel(self, vmachine):
-        for nic in vmachine.nics:
-            if nic.type != 'PUBLIC':
-                continue
-            vmachine.nics.remove(nic)
-            vmachine.nics.save()
-            self.models.vmachine.set(vmachine)
-            tags = j.core.tags.getObject(nic.params)
-            self.network.releaseExternalIpAddress(int(tags.tags.get('externalnetworkId')), nic.ipAddress)

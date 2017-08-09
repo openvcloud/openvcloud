@@ -54,8 +54,19 @@ def main(j, args, params, tags, tasklet):
     users = generateUsersList(machine.cloudspace, 'cl', users)
     users = generateUsersList(machine, 'vm', users)
     privateips = []
+    nics = []
     for nic in machine.nics:
+        nic.gateway = ""
         privateips.append(nic.ipAddress)
+        if nic.param:
+            nic_params = j.data.tags.getObject(nic.param)
+            nic.gateway = nic_params.getDict().get('gateway', '')
+        nics.append({
+        'deviceName': nic.deviceName,
+        'macAddress': nic.macAddress,
+        'ipAddress': nic.ipAddress,
+        'gateway': nic.gateway,
+        })
     portforwards = []
     for portforward in machine.cloudspace.forwardRules:
         if portforward.toAddr in privateips:
@@ -69,6 +80,7 @@ def main(j, args, params, tags, tasklet):
     args.doc.applyTemplate({'vmachine': machine,
                             'users': users,
                             'snapshots': snapshots,
+                            'nics': nics,
                             'portforwards': portforwards}, False)
     return params
 
