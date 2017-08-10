@@ -264,11 +264,5 @@ class cloudbroker_account(BaseActor):
         """
         account = self._checkAccount(accountId)
         accountId = account['id']
-        user = self.cb.checkUser(username)
-        if user:
-            userId = user['id']
-        else:
-            # external user, delete ACE that was added using emailaddress
-            userId = username
-        self.cb.actors.cloudapi.accounts.deleteUser(accountId=accountId, userId=userId, recursivedelete=recursivedelete)
+        self.cb.actors.cloudapi.accounts.deleteUser(accountId=accountId, userId=username, recursivedelete=recursivedelete)
         return True
