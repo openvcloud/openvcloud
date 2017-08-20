@@ -60,11 +60,13 @@ class cloudbroker_user(BaseActor):
                             error='Failed to delete users')
 
     def _deleteUsers(self, userIds, ctx):
-        for idx, username in enumerate(userIds):
+        if isinstance(userIds, str):
+            userIds = [userIds]
+        for idx, userid in enumerate(userIds):
             ctx.events.sendMessage("Deleting Users", 'Deleting User %s/%s' %
                                    (idx + 1, len(userIds)))
             try:  # BULK ACTION
-                self.delete(username)
+                self.deleteByGuid(userid)
             except exceptions.BadRequest:
                 pass
 
@@ -79,45 +81,8 @@ class cloudbroker_user(BaseActor):
         user = self.cb.checkUser(username)
         if not user:
             raise exceptions.NotFound("User with name %s does not exists" % username)
-        else:
-            userobj = self.syscl.user.get(user['id'])
 
-        query = {'acl.userGroupId': username, 'acl.type': 'U'}
-        # Delete user from all accounts, if account status is Destoryed then delete without
-        # further validation
-        accountswiththisuser = self.models.account.search(query)[1:]
-        for account in accountswiththisuser:
-            if account['status'] in ['DESTROYED', 'DESTROYING']:
-                # Delete immediately without further checks
-                accountobj = self.models.account.get(account['guid'])
-                accountobj.acl = filter(lambda a: a.userGroupId != username, accountobj.acl)
-                self.models.account.set(accountobj)
-            else:
-                j.apps.cloudbroker.account.deleteUser(accountId=account['id'], username=username,
-                                                      recursivedelete=True)
-
-        # Delete user from cloudspaces
-        cloudspaceswiththisuser = self.models.cloudspace.search(query)[1:]
-        for cloudspace in cloudspaceswiththisuser:
-            j.apps.cloudbroker.cloudspace.deleteUser(cloudspaceId=cloudspace['id'],
-                                                     username=username, recursivedelete=True)
-        # Delete user from vmachines
-        machineswiththisuser = self.models.vmachine.search(query)[1:]
-        for machine in machineswiththisuser:
-            j.apps.cloudbroker.machine.deleteUser(machineId=machine['id'], username=username)
-
-        # Set the user to inactive
-        userobj.active = False
-        gid = userobj.gid
-        uid = userobj.id
-        userobj.id = 'DELETED_%i_%s' % (time.time(), uid)
-        userobj.guid = '%s_DELETED_%i_%s' % (gid, time.time(), uid)
-        userobj.protected = False
-        self.syscl.user.delete(uid)
-        self.syscl.user.set(userobj)
-        self.syscl.sessioncache.deleteSearch({'user': uid})
-
-        return True
+        return self.deleteByGuid(user.id)
 
     @auth(['level1', 'level2', 'level3'])
     def deleteByGuid(self, userguid, **kwargs):
@@ -129,9 +94,42 @@ class cloudbroker_user(BaseActor):
         :param userguid: guid of the user to delete
         :return: True if deletion was successful
         """
-        if userguid.count("_"):
-            users = self.syscl.user.search({'guid': userguid})[1:]
-            username = users[0]['id']
-        else:
-            username = userguid
-        return self.delete(username)
+        userobj = self.systemodel.User.get(userguid)
+        username = userobj.name
+
+        # Delete user from all accounts, if account status is Destoryed then delete without
+        # further validation
+        accountswiththisuser = self.models.Account.objects(acl__userGroupId=username, acl__type__='U')
+        for account in accountswiththisuser:
+            if account.status in ['DESTROYED', 'DESTROYING']:
+                # Delete immediately without further checks
+                account.acl = filter(lambda a: a.userGroupId != username, account.acl)
+                account.save()
+            else:
+                j.apps.cloudbroker.account.deleteUser(accountId=account.id, username=username,
+                                                      recursivedelete=True)
+
+        # Delete user from cloudspaces
+        cloudspaceswiththisuser = self.models.Cloudspace.objects(acl__userGroupId=username,
+                                                                 acl__type__='U')
+        for cloudspace in cloudspaceswiththisuser:
+            j.apps.cloudbroker.cloudspace.deleteUser(cloudspaceId=cloudspace.id,
+                                                     username=username, recursivedelete=True)
+        # Delete user from vmachines
+        machineswiththisuser = self.models.VMachine.objects(acl__userGroupId=username, acl__type__='U')
+        for machine in machineswiththisuser:
+            j.apps.cloudbroker.machine.deleteUser(machineId=machine.id, username=username)
+
+        # Set the user to inactive
+        userobj.active = False
+        userobj.protected = False
+        userobj.delete()
+        # TODO: we need to store the deleted users back
+        # userobj.id = None
+        # userobj.save()
+
+        sessions = self.systemodel.SessionCache.objects(user=username)
+        for session in sessions:
+            session.delete()
+
+        return True
