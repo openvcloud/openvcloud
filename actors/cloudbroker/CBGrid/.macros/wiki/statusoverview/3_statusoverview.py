@@ -19,8 +19,6 @@ def main(j, args, params, tags, tasklet):
                 res[n] = p
         res[n] = prio[res[n]]
 
-    print(res)
-
     colormap = {'OK': 'green', 'WARNING': 'orange', 'ERROR': 'red'}
 
     def colorwrap(msg):
