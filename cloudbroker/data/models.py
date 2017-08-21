@@ -228,7 +228,7 @@ class VMachine(ModelBase):
 
 
 class Flap(EmbeddedDocument):
-    status = fields.StringField(required=True, choices=['OK', 'ERROR', 'WARNING', 'SKIPPED', 'MISSING'])
+    status = fields.StringField(required=True, choices=['OK', 'ERROR', 'WARNING', 'SKIPPED', 'MISSING', 'EXPIRED'])
     text = fields.StringField(required=True)
     lasttime = fields.IntField(default=j.data.time.getTimeEpoch)
 

@@ -13,6 +13,9 @@ def checkhealthckeck():
             if t - h.lasttime > 2 * h.interval:
                 eco = j.errorhandler.getErrorConditionObject(msg="healthcheck %s hasn't been fired since %d seconds ago" % (h.name, t - h.lasttime))
                 eco.process()
+                for m in h.messages:
+                    add_flap(m, {'status': 'EXPIRED', 'text': m.flaps[-1].text, 'lasttime': t})
+                h.save()
     except Exception as e:
         j.errorhandler.processPythonExceptionObject(e)
     g = Greenlet(checkhealthckeck)

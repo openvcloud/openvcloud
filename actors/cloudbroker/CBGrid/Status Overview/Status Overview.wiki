@@ -10,5 +10,5 @@ h3. Process Status
 
 ||Location||Stack||Status||Details||
 {% for stack in stacks -%}
-| [${stack.location.name}|/cbgrid/location?id=${stack.location.id}]| [${stack.name}|/cbgrid/stack?id=${stack.id}]| ${colorwrap(healthchecks.get(stack.referenceId, {}).get('status', 'UNKNOWN'))} | [Details| /cbgrid/stackstatus?id=${stack.id}] |
+| [${stack.location.name}|/cbgrid/location?id=${stack.location.id}]| [${stack.name}|/cbgrid/stack?id=${stack.id}]| ${colorwrap(healthchecks.get(stack.referenceId, {}))} | [Details| /cbgrid/stackstatus?id=${stack.id}] |
 {% endfor %}
