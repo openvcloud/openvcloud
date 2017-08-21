@@ -47,9 +47,7 @@ def collect_stats():
 
     images = {str(image.id): image.name for image in models.Image.objects}
     accounts = models.Account.objects(status__nin=['DISABLED', 'DESTROYED'])
-    vmachines = models.VMachine.objects(status__nin=['DISABLED', 'DESTROYED'])
-    disks = {disk.id:disk.size for disk in models.Disk.objects}
-    num_disk_map = {k:'vd%s'%chr(v) for k,v in zip(range(26), range(ord('a'), ord('z')+1))}
+    num_disk_map = {k: 'vd%s' % chr(v) for k, v in zip(range(26), range(ord('a'), ord('z')+1))}
     for location in models.Location.objects:
         try:
             client = getGridClient(location, models).rawclient
@@ -60,8 +58,8 @@ def collect_stats():
             continue
 
     for account in accounts:
-        folder_name = "/opt/var/resourcetracking/active/%s/%s/%s/%s/%s" % \
-                        (str(account.id), year, month, day, hour)
+        folder_name = "%s/resourcetracking/active/%s/%s/%s/%s/%s" % \
+                        (j.dirs.VARDIR, str(account.id), year, month, day, hour)
         j.do.createDir(folder_name)
         cloudspaces = models.Cloudspace.objects(status__nin=['DISABLED', 'DESTROYED'], account=account)
         for cloudspace in cloudspaces:
@@ -86,7 +84,7 @@ def collect_stats():
                 spaceRX = get_last_hour_val(node_stats, spacerx_key)
 
                 spacetx_key = "network.packets.tx/contm{cont_id}-1".format(cont_id=cont_id)
-                spaceTX = get_last_hour_val(node_stats, spacerx_key)
+                spaceTX = get_last_hour_val(node_stats, spacetx_key)
             else:
                 spaceRX = spaceTX = 0
 
@@ -102,7 +100,6 @@ def collect_stats():
             for idx, vm in enumerate(vms):
                 m.id = str(vm.id)
                 m.type = vm.type
-                stack_id = nodeid
                 m.imageName = images[str(vm.image.id)]
                 m.mem = vm.memory
                 m.vcpus = vm.vcpus
