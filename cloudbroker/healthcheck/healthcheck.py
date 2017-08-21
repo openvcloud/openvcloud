@@ -1,7 +1,22 @@
 from js9 import j
+import time
 from cloudbroker.actorlib.gridmanager.client import getGridClient
 from gevent import Greenlet
 models = j.portal.tools.models.cloudbroker
+
+
+def checkhealthckeck():
+    try:
+        hs = models.Healthcheck.objects.all()
+        t = time.time()
+        for h in hs:
+            if t - h.lasttime > 2 * h.interval:
+                eco = j.errorhandler.getErrorConditionObject(msg="healthcheck %s hasn't been fired since %d seconds ago" % (h.name, t - h.lasttime))
+                eco.process()
+    except Exception as e:
+        j.errorhandler.processPythonExceptionObject(e)
+    g = Greenlet(checkhealthckeck)
+    g.start_later(30)
 
 
 def main():
