@@ -6,6 +6,7 @@ def init():
 
     from cloudbroker.healthcheck import healthcheck
     gevent.Greenlet.spawn(healthcheck.main)
+    gevent.Greenlet.spawn(healthcheck.checkhealthckeck)
 
     from cloudbroker.resourcemonitoring import resourcemonitoring
     gevent.Greenlet.spawn(resourcemonitoring.collect_stats)
