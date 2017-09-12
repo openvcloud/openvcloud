@@ -10,7 +10,6 @@ def main(j, args, params, tags, tasklet):
     options = list()
     popup.addText('Enter Username', 'username')
     popup.addText('Enter Email Address', 'emailaddress')
-    popup.addHiddenField('domain', '')
     popup.addText('Enter Password', 'password', type='password',
                   placeholder='If left empty, a random password will be generated')
     for group in models.Group.objects.only('name'):
