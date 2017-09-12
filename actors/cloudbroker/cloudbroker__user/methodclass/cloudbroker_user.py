@@ -34,7 +34,7 @@ class cloudbroker_user(BaseActor):
     def create(self, username, emailaddress, password, groups, **kwargs):
         groups = groups or []
         created = j.portal.tools.server.active.auth.createUser(
-            username, password, emailaddress, groups, None)
+            username, password, emailaddress, groups)
         if created:
             primaryemailaddress = emailaddress[0]
             self.cb.updateResourceInvitations(username, primaryemailaddress)
