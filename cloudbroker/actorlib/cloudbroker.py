@@ -198,7 +198,7 @@ class CloudBroker(object):
             return True
         else:
             otheradmins = filter(lambda a: set(a.right) == set('ARCXDU') and a != userace, acl)
-            if not otheradmins:
+            if not list(otheradmins):
                 return False
             else:
                 return True
