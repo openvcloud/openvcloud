@@ -32,7 +32,7 @@ cd openvcloud
 pip3 install -e .
 ```
 
-2. Add contentdir in `/optvar/cfg/portals/main/config.yaml`:  
+2. Add contentdir in `/opt/cfg/portals/main/config.yaml`:
 `contentdirs:  '/opt/code/github/openvcloud/openvcloud/actors'`
 
 3. Also check the [config](configuration.md) for specific OpenvCloud configuration
