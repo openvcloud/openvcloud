@@ -19,6 +19,7 @@ def refresh_jwt_token(token):
 class GridClient(object):
     def __init__(self, location, models):
         self.rawclient = APIClient(location.apiUrl.rstrip('/'))
+        self.rawclient.session.verify = False
         if location.apiToken:
             self.rawclient.set_auth_header('Bearer {}'.format(location.apiToken))
 
