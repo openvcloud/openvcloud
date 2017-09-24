@@ -12,16 +12,18 @@ class StorageManager(BaseManager):
         volume = {}
         if image:
             volume['templatevdisk'] = image.referenceId
-        cluster = random.choice(self.client.storageclusters.ListAllClusters().json())
+        vdiskstor = random.choice(self.client.vdiskstorage.ListVdiskStorages().json())
         diskid = 'vdisk-{}'.format(disk.id)
         volume.update({'size': disk.size,
                        'blocksize': 4096,
                        'id': diskid,
-                       'storagecluster': cluster,
+                       'backupStoragecluster': vdiskstor['slaveCluster'],
+                       'objectStoragecluster': vdiskstor['objectCluster'],
+                       'blockStoragecluster': vdiskstor['blockCluster'],
                        'type': VDISKTYPEMAP.get(disk.type, 'boot'),
                        })
         self.client.vdisks.CreateNewVdisk(volume)
-        disk.referenceId = '{}:{}'.format(cluster, diskid)
+        disk.referenceId = '{}:{}'.format(vdiskstor, diskid)
         disk.modify(referenceId=disk.referenceId)
 
     def deleteVolume(self, disk):
