@@ -16,6 +16,7 @@ import crypt
 models = j.portal.tools.models.cloudbroker
 MACHINE_INVALID_STATES = ['ERROR', 'DESTROYED', 'DESTROYING']
 
+
 def removeConfusingChars(input):
     return input.replace('0', '').replace('O', '').replace('l', '').replace('I', '')
 
@@ -527,6 +528,24 @@ class Machine(object):
             self.cb.markProvider(stack, eco)
             machine.modify(status='ERROR')
             raise
+        return machine.id
+
+    def move(self, machine, targetStack, force=False):
+        stack = machine.stack
+        client = getGridClient(stack.location, models)
+
+        try:
+            client.machine.move(machine.id, stack.referenceId, targetStack.referenceId)
+        except Exception as e:
+            if force:
+                try:
+                    client.machine.stop(machine.id, stack.referenceId)
+                    client.machine.move(machine.id, stack.referenceId, targetStack.referenceId)
+                    return machine.id
+                except Exception as e:
+                    eco = j.errorhandler.processPythonExceptionObject(e)
+                    self.cb.markProvider(stack, eco)
+                    raise
         return machine.id
 
     def get(self, machine):
