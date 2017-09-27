@@ -557,7 +557,7 @@ class cloudapi_machines(BaseActor):
         #     clonenames = ['  * %s' % vm['name'] for vm in vms]
         #     raise exceptions.Conflict(
         #         "Can not delete a Virtual Machine which has clones.\nExisting Clones Are:\n%s" % '\n'.join(clonenames))
-        self. _detachExternalNetworkFromModel(vmachinemodel)
+        self._detachExternalNetworkFromModel(vmachinemodel)
         if not vmachinemodel.status == 'DESTROYED':
             vmachinemodel.modify(status='DESTROYED', deletionTime=int(time.time()))
 
@@ -1071,7 +1071,11 @@ class cloudapi_machines(BaseActor):
         """
 
         machine = self._get(machineId)
+        machine = self._detachExternalNetworkFromModel(machine)
+        self.cb.machine.update(machine)
+        return True
 
+    def _detachExternalNetworkFromModel(self, machine):
         for nic in machine.nics:
             if nic.type != 'vlan':
                 continue
@@ -1080,6 +1084,5 @@ class cloudapi_machines(BaseActor):
             ext_net_id = tags.tags.get('externalnetworkId')
             ext_net = self.models.ExternalNetwork.objects.get(id=ext_net_id)
             self.network.releaseExternalIpAddress(ext_net, nic.ipAddress)
-        self.cb.machine.update(machine)
         machine.save()
-        return True
+        return machine
