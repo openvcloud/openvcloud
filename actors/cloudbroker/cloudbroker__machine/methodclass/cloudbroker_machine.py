@@ -209,7 +209,7 @@ class cloudbroker_machine(BaseActor):
             targetStackId = self.cb.getBestStack(cloudspace.location, vmachine.image)
 
         targetStack = self.models.Stack.get(targetStackId)
-        if targetStack.location != source_stack.location:
+        if targetStack.location.id != source_stack.location.id:
             raise exceptions.BadRequest('Target stack %s is not on the same location as source' % targetStack.client.uri)
 
         self.cb.machine.move(vmachine, targetStack, force=force)
