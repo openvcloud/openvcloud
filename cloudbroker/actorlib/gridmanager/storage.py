@@ -21,7 +21,7 @@ class StorageManager(BaseManager):
         volume.update({'size': disk.size,
                        'blocksize': 4096,
                        'id': diskid,
-                       'vdiskstorage': vdiskstor['id'],
+                       'blockStoragecluster': cluster,
                        'type': VDISKTYPEMAP.get(disk.type, 'boot'),
                        })
         self.client.vdisks.CreateNewVdisk(volume)

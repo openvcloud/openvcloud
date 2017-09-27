@@ -60,6 +60,12 @@ class MachineManager(BaseManager):
     def status(self, machineId, nodeId):
         return self.client.nodes.GetVM(nodeid=nodeId, vmid='vm-{}'.format(machineId)).json()['status']
 
+    def move(self, machineId, nodeId, trgtNodeId):
+        data = {
+            "nodeid": trgtNodeId
+        }
+        return self.client.nodes.MigrateVM(data=data, nodeid=nodeId, vmid='vm-{}'.format(machineId)).json()['status']
+
     def destroy(self, machineId, nodeId):
         try:
             return self.client.nodes.DeleteVM(nodeid=nodeId, vmid='vm-{}'.format(machineId))

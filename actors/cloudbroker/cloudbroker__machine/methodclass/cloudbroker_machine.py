@@ -202,24 +202,19 @@ class cloudbroker_machine(BaseActor):
     @async('Moving Virtual Machine', 'Finished Moving Virtual Machine', 'Failed to move Virtual Machine')
     def moveToDifferentComputeNode(self, machineId, reason, targetStackId=None, force=False, **kwargs):
         vmachine = self._validateMachineRequest(machineId)
-        cloudspace = self.models.cloudspace.get(vmachine.cloudspaceId)
-        source_stack = self.models.stack.get(vmachine.stackId)
+        cloudspace = vmachine.cloudspace
+        source_stack = vmachine.stack
+
         if not targetStackId:
-            targetStackId = self.cb.getBestStack(cloudspace.gid, vmachine.imageId)['id']
+            targetStackId = self.cb.getBestStack(cloudspace.location, vmachine.image)
 
-        target_provider = self.cb.getProviderByStackId(targetStackId)
-        if target_provider.client.gid != source_stack.gid:
-            raise exceptions.BadRequest('Target stack %s is not on some grid as source' % target_provider.client.uri)
+        targetStack = self.models.Stack.get(targetStackId)
+        if targetStack.location.id != source_stack.location.id:
+            raise exceptions.BadRequest('Target stack %s is not on the same location as source' % targetStack.client.uri)
 
-        if vmachine.status != 'HALTED':
-            # create network on target node
-            self.acl.executeJumpscript('greenitglobe', 'createnetwork', args={'networkid': cloudspace.networkId},
-                                       gid=target_provider.client.gid, nid=target_provider.client.id, wait=True)
-
-            node = self.cb.Dummy(id=vmachine.referenceId)
-            target_provider.client.ex_migrate(node, self.cb.getProviderByStackId(vmachine.stackId).client, force)
-        vmachine.stackId = targetStackId
-        self.models.vmachine.set(vmachine)
+        self.cb.machine.move(vmachine, targetStack, force=force)
+        vmachine.stack = targetStack
+        vmachine.save()
 
     @auth(['level1', 'level2', 'level3'])
     def export(self, machineId, name, backuptype, storage, host, aws_access_key, aws_secret_key, bucketname, **kwargs):
