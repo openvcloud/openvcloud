@@ -151,7 +151,7 @@ class cloudbroker_computenode(BaseActor):
             raise exceptions.BadRequest("Can not put stack in maintenance when it has VFW deployed")
 
         if vmaction == 'stop':
-            stackmachines = self.models.VMachine.objects(stack=stack)
+            stackmachines = self._get_stack_machines(stackId=stack.id)
             for machine in stackmachines:
                 if machine.status == 'RUNNING':
                     if machine.tags is not None and 'start' not in machine.tags.split(" "):
@@ -179,24 +179,26 @@ class cloudbroker_computenode(BaseActor):
         return True
 
     def _stop_vfws(self, stack, title, ctx):
-        cloudspaces = self.models.Cloudspace.objects(stack=stack, status__in=["DEPLOYED", "VIRTUAL"])
+        cloudspaces = self.models.Cloudspace.objects(stack=stack, status__in=['DEPLOYED', 'VIRTUAL'])
         for cloudspace in cloudspaces:
             ctx.events.sendMessage(title, 'Stopping Virtual Firewal %s' % cloudspace.id)
             self.cb.netmgr.destroy(cloudspace)
 
     def _start_vfws(self, stack, title, ctx):
-        cloudspaces = self.models.Cloudspace.objects(stack=stack, status='DEPLOYED')
+        cloudspaces = self.models.Cloudspace.objects(stack=stack, status__in=['DEPLOYED', 'VIRTUAL'])
 
         for cloudspace in cloudspaces:
             ctx.events.sendMessage(title, 'Starting Virtual Firewal %s' % cloudspace.id)
             self.cb.netmgr.create(cloudspace)
+            cloudspace.status = 'DEPLOYED'
+            cloudspace.save()
 
     def _move_virtual_machines(self, stack, title, ctx):
         machines_actor = j.apps.cloudbroker.machine
-        stackmachines = self.models.VMachine.objects(stack=stack, status__nin=['DESTROYED', 'ERROR'])
+        stackmachines = self._get_stack_machines(stackId=stack.id)
         otherstacks = self.models.Stack.objects(location=stack.location, id__ne=stack.id)
         if not otherstacks:
-            raise exceptions.ServiceUnavailable('There is no other node available to move the Virtual Firewall to')
+            raise exceptions.ServiceUnavailable('There is no other node available to move the virtual mnachines to')
 
         for machine in stackmachines:
             ctx.events.sendMessage(title, 'Moving Virtual Machine %s' % machine['name'])
