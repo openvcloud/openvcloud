@@ -42,17 +42,9 @@ class cloudbroker_computenode(BaseActor):
             return self._changeStackStatus(stack, status)
 
     def _changeStackStatus(self, stack, status):
-        stack['status'] = status
-        if status == 'ENABLED':
-            stack['eco'] = None
-        self.models.stack.set(stack)
-        if status in ['ENABLED', 'MAINTENANCE', 'DECOMMISSIONED', 'ERROR']:
-            nodes = self.scl.node.search({'id': int(stack['referenceId']), 'gid': stack['gid']})[1:]
-            if len(nodes) > 0:
-                node = nodes[0]
-                node['active'] = True if status == 'ENABLED' else False
-                self.scl.node.set(node)
-        return stack['status']
+        stack.status = status
+        stack.save()
+        return status
 
     def _errorcb(self, stack, eco):
         stack['status'] = 'ERROR'
@@ -148,20 +140,25 @@ class cloudbroker_computenode(BaseActor):
         """
         if vmaction not in ('move', 'stop'):
             raise exceptions.BadRequest("VMAction should either be move or stop")
+
+        machines_actor = j.apps.cloudbroker.machine
+
         stack = self._getStack(id)
         errorcb = functools.partial(self._errorcb, stack)
         self._changeStackStatus(stack, "MAINTENANCE")
-        title = 'Putting Node in Maintenance'
-        if self.models.Cloudspace.objects(stack=stack).count() > 0 and vmaction == 'move':
-            raise exceptions.BadRequest("Can not put stack in maintenance when it has VFW deployed")
-        if vmaction == 'stop':
-            machines_actor = j.apps.cloudbroker.machine
-            stackmachines = self._get_stack_machines(stack['id'], ['id', 'status', 'tags'])
-            for machine in stackmachines:
-                if machine['status'] == 'RUNNING':
-                    if 'start' not in machine['tags'].split(" "):
-                        machines_actor.tag(machine['id'], 'start')
 
+        if self.models.Cloudspace.objects(stack=stack, status="DEPLOYED").count() > 0 and vmaction == 'move':
+            raise exceptions.BadRequest("Can not put stack in maintenance when it has VFW deployed")
+
+        if vmaction == 'stop':
+            stackmachines = self.models.VMachine.objects(stack=stack)
+            for machine in stackmachines:
+                if machine.status == 'RUNNING':
+                    if machine.tags is not None and 'start' not in machine.tags.split(" "):
+                        machine.tags += " %s" % (machine.id, 'start')
+                        machine.save()
+
+            title = 'Putting Node in Maintenance'
             kwargs['ctx'].events.runAsync(self._stop_vfws,
                                           args=(stack, title, kwargs['ctx']),
                                           kwargs={},
@@ -169,8 +166,7 @@ class cloudbroker_computenode(BaseActor):
                                           success='Successfully Stopped all Virtual Firewalls',
                                           error='Failed to Stop Virtual Firewalls',
                                           errorcb=errorcb)
-
-            machineIds = [machine['id'] for machine in stackmachines]
+            machineIds = [machine.id for machine in stackmachines]
             machines_actor.stopMachines(machineIds, "", ctx=kwargs['ctx'])
         elif vmaction == 'move':
             kwargs['ctx'].events.runAsync(self._move_virtual_machines,
@@ -183,18 +179,17 @@ class cloudbroker_computenode(BaseActor):
         return True
 
     def _stop_vfws(self, stack, title, ctx):
-        vfws = self._vcl.search({'gid': stack['gid'],
-                                 'nid': int(stack['referenceId'])})[1:]
-        for vfw in vfws:
-            ctx.events.sendMessage(title, 'Stopping Virtual Firewal %s' % vfw['id'])
-            self.cb.netmgr.fw_stop(vfw['guid'])
+        cloudspaces = self.models.Cloudspace.objects(stack=stack, status__in=["DEPLOYED", "VIRTUAL"])
+        for cloudspace in cloudspaces:
+            ctx.events.sendMessage(title, 'Stopping Virtual Firewal %s' % cloudspace.id)
+            self.cb.netmgr.destroy(cloudspace)
 
     def _start_vfws(self, stack, title, ctx):
-        vfws = self._vcl.search({'gid': stack['gid'],
-                                 'nid': int(stack['referenceId'])})[1:]
-        for vfw in vfws:
-            ctx.events.sendMessage(title, 'Starting Virtual Firewal %s' % vfw['id'])
-            self.cb.netmgr.fw_start(vfw['guid'])
+        cloudspaces = self.models.Cloudspace.objects(stack=stack, status='DEPLOYED')
+
+        for cloudspace in cloudspaces:
+            ctx.events.sendMessage(title, 'Starting Virtual Firewal %s' % cloudspace.id)
+            self.cb.netmgr.create(cloudspace)
 
     def _move_virtual_machines(self, stack, title, ctx):
         machines_actor = j.apps.cloudbroker.machine

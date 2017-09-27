@@ -57,8 +57,7 @@
         Migrates or stop all vms
         Set the status to 'MAINTENANCE'
         """
-        var:id int,, id of the computenode
-        var:locationId str,, the grid this computenode belongs to
+        var:id str,, id of the computenode
         var:vmaction str,, what to do with running vms move or stop
         var:message str,,message. Must be less than 30 characters
         result: str
