@@ -13,9 +13,10 @@ class StorageManager(BaseManager):
         volume = {}
         if image:
             volume['templatevdisk'] = image.referenceId
+
         vdiskstors = self.client.vdiskstorage.ListVdiskStorages().json()
         if not vdiskstors:
-            exceptions.PreconditionFailed('no vdiskstorages available')
+            raise exceptions.PreconditionFailed('no vdiskstorages available')
         vdiskstor = random.choice(vdiskstors)
         diskid = 'vdisk-{}'.format(disk.id)
         volume.update({'size': disk.size,
@@ -25,7 +26,7 @@ class StorageManager(BaseManager):
                        'type': VDISKTYPEMAP.get(disk.type, 'boot'),
                        })
         self.client.vdisks.CreateNewVdisk(volume)
-        disk.referenceId = '{}:{}'.format(vdiskstor, diskid)
+        disk.referenceId = '{}:{}'.format(vdiskstor['id'], diskid)
         disk.modify(referenceId=disk.referenceId)
 
     def deleteVolume(self, disk):
