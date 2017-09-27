@@ -1,4 +1,5 @@
 from .base import BaseManager
+from JumpScale9Portal.portal import exceptions
 import random
 
 VDISKTYPEMAP = {'BOOT': 'boot',
@@ -12,7 +13,10 @@ class StorageManager(BaseManager):
         volume = {}
         if image:
             volume['templatevdisk'] = image.referenceId
-        cluster = random.choice(self.client.storageclusters.ListAllClusters().json())
+        vdiskstors = self.client.vdiskstorage.ListVdiskStorages().json()
+        if not vdiskstors:
+            exceptions.PreconditionFailed('no vdiskstorages available')
+        vdiskstor = random.choice(vdiskstors)
         diskid = 'vdisk-{}'.format(disk.id)
         volume.update({'size': disk.size,
                        'blocksize': 4096,
@@ -21,7 +25,7 @@ class StorageManager(BaseManager):
                        'type': VDISKTYPEMAP.get(disk.type, 'boot'),
                        })
         self.client.vdisks.CreateNewVdisk(volume)
-        disk.referenceId = '{}:{}'.format(cluster, diskid)
+        disk.referenceId = '{}:{}'.format(vdiskstor, diskid)
         disk.modify(referenceId=disk.referenceId)
 
     def deleteVolume(self, disk):
