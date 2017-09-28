@@ -11,7 +11,7 @@ def main(j, args, params, tags, tasklet):
     for location in models.Location.objects:
         locations.append((location.name, str(location.id)))
     externalnetworks = list()
-    stacks = [('Auto', None)]
+    stacks = [('Auto', '')]
 
     for stack in models.Stack.objects(status='ENABLED'):
         stacks.append((stack['name'], stack['id']))

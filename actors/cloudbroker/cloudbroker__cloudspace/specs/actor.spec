@@ -65,7 +65,7 @@
         var:locationId str,, location key where the space should be created
         var:name str,, name of space to create @tags validator:name
         var:access str,, username which have full access to this space
-        var:stackId str,, Id of the stack to deploy the cloudspace on
+        var:stackId str,, Id of the stack to deploy the cloudspace on @optional
         var:maxMemoryCapacity float,-1, max size of memory in GB @optional
         var:maxVDiskCapacity int,-1, max size of aggregated vdisks in GB @optional
         var:maxCPUCapacity int,-1, max number of cpu cores @optional
