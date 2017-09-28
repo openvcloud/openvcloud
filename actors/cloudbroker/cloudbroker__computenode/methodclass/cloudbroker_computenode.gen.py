@@ -66,12 +66,11 @@ class cloudbroker_computenode(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method list")
 
-    def maintenance(self, id, locationId, vmaction, message, **kwargs):
+    def maintenance(self, id, vmaction, message, **kwargs):
         """
         Migrates or stop all vms
         Set the status to 'MAINTENANCE'
         param:id id of the computenode
-        param:locationId the grid this computenode belongs to
         param:vmaction what to do with running vms move or stop
         param:message message. Must be less than 30 characters
         result 

@@ -187,7 +187,7 @@ class cloudbroker_cloudspace(BaseActor):
                                              maxNetworkPeerTransfer=maxNetworkPeerTransfer, maxNumPublicIP=maxNumPublicIP, allowedVMSizes=allowedVMSizes)
 
     @auth(['level1', 'level2', 'level3'])
-    def create(self, accountId, locationId, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
+    def create(self, accountId, locationId, name, access, stackId=None, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
                maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1, externalnetworkId=None, allowedVMSizes=[], **kwargs):
         """
         Create a cloudspace
@@ -217,12 +217,12 @@ class cloudbroker_cloudspace(BaseActor):
         maxNetworkPeerTransfer = resourcelimits['CU_NP']
         maxNumPublicIP = resourcelimits['CU_I']
 
-        return self.cb.actors.cloudapi.cloudspaces.create(accountId=accountId, locationId=locationId, name=name,
-                                                          access=access, maxMemoryCapacity=maxMemoryCapacity,
-                                                          maxVDiskCapacity=maxVDiskCapacity, maxCPUCapacity=maxCPUCapacity,
-                                                          maxNetworkPeerTransfer=maxNetworkPeerTransfer,
-                                                          maxNumPublicIP=maxNumPublicIP, externalnetworkId=externalnetworkId,
-                                                          allowedVMSizes=allowedVMSizes, **kwargs)
+        return self.cb.cloudspace.create(accountId=accountId, locationId=locationId, name=name,
+                                         access=access, stackId=None, maxMemoryCapacity=maxMemoryCapacity,
+                                         maxVDiskCapacity=maxVDiskCapacity, maxCPUCapacity=maxCPUCapacity,
+                                         maxNetworkPeerTransfer=maxNetworkPeerTransfer,
+                                         maxNumPublicIP=maxNumPublicIP, externalnetworkId=externalnetworkId,
+                                         allowedVMSizes=allowedVMSizes, **kwargs)
 
     @auth(['level1', 'level2', 'level3'])
     def addUser(self, cloudspaceId, username, accesstype, **kwargs):

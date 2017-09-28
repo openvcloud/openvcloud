@@ -140,10 +140,6 @@ class cloudapi_cloudspaces(BaseActor):
         results = self.models.Cloudspace.objects(account=account, status__ne='DESTROYED')
         return results
 
-    def validate_name(self, account, name):
-        if self.models.Cloudspace.objects(account=account.id, name=name, status__ne='DESTROYED').count() > 0:
-            raise exceptions.BadRequest("Cloudspace with name %s already exists" % name)
-
     @authenticator.auth(acl={'account': set('C')})
     def create(self, accountId, locationId, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
                maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1,
@@ -164,127 +160,14 @@ class cloudapi_cloudspaces(BaseActor):
         :return: True if update was successful
         :return int with id of created cloudspace
         """
-        accountId = accountId
-        account = self.models.Account.get(accountId)
-        if not account or account.status in ['DESTROYED', 'DESTROYING']:
-            raise exceptions.NotFound('Account does not exist')
-        location = self.models.Location.get(locationId)
-        if not location:
-            raise exceptions.BadRequest('Location %s does not exists' % location)
-        if externalnetworkId:
-            externalnetwork = self.models.ExternalNetwork.get(externalnetworkId)
-            if not externalnetwork:
-                raise exceptions.BadRequest('Could not find externalnetwork with id %s' % externalnetworkId)
-            if externalnetwork.account and externalnetwork.account.id != account.id:
-                raise exceptions.BadRequest('ExternalNetwork belongs to another account')
-            if externalnetwork.location.id != location.id:
-                raise exceptions.BadRequest('ExternalNetwork does not belong to currenct location')
-        else:
-            externalnetwork = None
-
-        self.validate_name(account, name)
-
-        ace = self.models.ACE(
-            userGroupId=access,
-            status='CONFIRMED',
-            type='U',
-            right='CXDRAU'
-        )
-
-        resourceLimits = {'CU_M': maxMemoryCapacity,
-                          'CU_D': maxVDiskCapacity,
-                          'CU_C': maxCPUCapacity,
-                          'CU_NP': maxNetworkPeerTransfer,
-                          'CU_I': maxNumPublicIP}
-        self.cb.fillResourceLimits(resourceLimits)
-
-        if resourceLimits['CU_I'] != -1 and resourceLimits['CU_I'] < 1:
-            raise exceptions.BadRequest("Cloudspace must have reserve at least 1 Public IP "
-                                        "address for its VFW")
-
-        networkid = self.cb.getFreeNetworkId(location)
-        if not networkid:
-            raise exceptions.ServiceUnavailable("Failed to get networkid")
-
-        netinfo = self.network.getExternalIpAddress(location, externalnetwork)
-        if netinfo is None:
-            raise exceptions.ServiceUnavailable("No available external IP Addresses")
-
-        pool, externalipaddress = netinfo
-
-        cs = self.models.Cloudspace(
-            name=name,
-            account=account,
-            externalnetwork=pool.id,
-            externalnetworkip=str(externalipaddress),
-            networkcidr=netmgr.DEFAULTCIDR,
-            allowedVMSizes=allowedVMSizes,
-            location=location,
-            acl=[ace],
-            resourceLimits=resourceLimits,
-            status='VIRTUAL',
-            networkId=networkid,
-        )
-
-        # Validate that the specified CU limits can be reserved on account, since there is a
-        # validation earlier that maxNumPublicIP > 0 (or -1 meaning unlimited), this check will
-        # make sure that 1 Public IP address will be reserved for this cloudspace
-        try:
-            self._validateAvaliableAccountResources(cs, maxMemoryCapacity, maxVDiskCapacity,
-                                                    maxCPUCapacity, maxNetworkPeerTransfer, maxNumPublicIP)
-        except:
-            self.network.releaseExternalIpAddress(pool, str(externalipaddress))
-            self.cb.releaseNetworkId(location, networkid)
-            raise
-
-        # deploy async.
-        cs.save()
-        try:
-            self._deploy(cs)
-        except:
-            cs.delete()
-            raise
-        ctx = kwargs['ctx']
-        ctx.env['tags'] += 'cloudspaceId:{}'.format(cs.id)
-
-        return str(cs.id)
+        return self.cb.cloudspace.create(accountId, locationId, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
+                                         maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1,
+                                         externalnetworkId=None, allowedVMSizes=[], **kwargs)
 
     @authenticator.auth(acl={'cloudspace': set('C')})
     def deploy(self, cloudspaceId, **kwargs):
         cloudspace = self.cb.cloudspace.get(cloudspaceId)
-        return self._deploy(cloudspace)
-
-    def _deploy(self, cloudspace, **kwargs):
-        """
-        Create VFW for cloudspace
-
-        :param cloudspaceId: id of the cloudspace
-        :return: status of deployment
-        """
-        try:
-            if cloudspace.status != 'VIRTUAL':
-                return
-            cloudspace.modify(status='DEPLOYING')
-            pool = cloudspace.externalnetwork
-            if cloudspace.externalnetworkip is None:
-                pool, externalipaddress = self.network.getExternalIpAddress(cloudspace.location, cloudspace.externalnetwork)
-                cloudspace.externalnetworkip = str(externalipaddress)
-                cloudspace.modify(externalnetworkip=str(externalipaddress))
-
-            externalipaddress = netaddr.IPNetwork(cloudspace.externalnetworkip)
-
-            try:
-                self.netmgr.create(cloudspace)
-            except:
-                self.network.releaseExternalIpAddress(pool, str(externalipaddress))
-                cloudspace.modify(status='VIRTUAL', externalnetworkip=None)
-                raise
-
-            cloudspace.modify(status='DEPLOYED', updateTime=int(time.time()))
-            return 'DEPLOYED'
-        except Exception as e:
-            j.errorhandler.processPythonExceptionObject(e, message="Cloudspace deploy aysnc call exception.")
-            raise
+        return self.cb.cloudspace.deploy(cloudspace)
 
     @authenticator.auth(acl={'cloudspace': set('D')})
     def delete(self, cloudspaceId, **kwargs):
@@ -536,68 +419,6 @@ class cloudapi_cloudspaces(BaseActor):
         """
         return 0
 
-    def _validateAvaliableAccountResources(self, cloudspace, maxMemoryCapacity=None,
-                                           maxVDiskCapacity=None, maxCPUCapacity=None,
-                                           maxNetworkPeerTransfer=None, maxNumPublicIP=None, excludecloudspace=True):
-        """
-        Validate that the required CU limits to be reserved for the cloudspace are available in
-        the account
-
-        :param cloudspace: cloudspace object
-        :param maxMemoryCapacity: max size of memory in GB
-        :param maxVDiskCapacity: max size of aggregated vdisks in GB
-        :param maxCPUCapacity: max number of cpu cores
-        :param maxNetworkPeerTransfer: max sent/received network transfer peering
-        :param maxNumPublicIP: max number of assigned public IPs
-        :param excludecloudspace: exclude the cloudspace being validated while performing the
-            calculations
-        :return: True if all required CUs are available in account
-        """
-        accountcus = cloudspace.account.resourceLimits
-        self.cb.fillResourceLimits(accountcus)
-        if excludecloudspace:
-            excludecloudspaceid = cloudspace.id
-        else:
-            excludecloudspaceid = None
-
-        reservedcus = j.apps.cloudapi.accounts.getReservedCloudUnits(cloudspace.account,
-                                                                     excludecloudspaceid)
-
-        if maxMemoryCapacity:
-            avaliablememorycapacity = accountcus['CU_M'] - reservedcus['CU_M']
-            if maxMemoryCapacity != -1 and accountcus['CU_M'] != -1 and maxMemoryCapacity > avaliablememorycapacity:
-                raise exceptions.BadRequest("Owning account has only %s GB of unreserved memory, "
-                                            "cannot reserve %s GB for this cloudspace" %
-                                            (avaliablememorycapacity, maxMemoryCapacity))
-
-        if maxVDiskCapacity:
-            avaliablevdiskcapacity = accountcus['CU_D'] - reservedcus['CU_D']
-            if maxVDiskCapacity != -1 and accountcus['CU_D'] != -1 and maxVDiskCapacity > avaliablevdiskcapacity:
-                raise exceptions.BadRequest("Owning account has only %s GB of unreserved vdisk "
-                                            "storage, cannot reserve %s GB for this cloudspace" %
-                                            (avaliablevdiskcapacity, maxVDiskCapacity))
-
-        if maxCPUCapacity:
-            avaliablecpucapacity = accountcus['CU_C'] - reservedcus['CU_C']
-            if maxCPUCapacity != -1 and accountcus['CU_C'] != -1 and maxCPUCapacity > avaliablecpucapacity:
-                raise exceptions.BadRequest("Owning account has only %s unreserved CPU cores,  "
-                                            "cannot reserve %s cores for this cloudspace" %
-                                            (avaliablecpucapacity, maxCPUCapacity))
-
-        if maxNetworkPeerTransfer:
-            avaliablenetworkpeertransfer = accountcus['CU_NP'] - reservedcus['CU_NP']
-            if maxNetworkPeerTransfer != -1 and accountcus['CU_NP'] != -1 and maxNetworkPeerTransfer > avaliablenetworkpeertransfer:
-                raise exceptions.BadRequest("Owning account has only %s GB of unreserved network "
-                                            "transfer, cannot reserve %s GB for this cloudspace" %
-                                            (avaliablenetworkpeertransfer, maxNetworkPeerTransfer))
-        if maxNumPublicIP:
-            avaliablepublicips = accountcus['CU_I'] - reservedcus['CU_I']
-            if maxNumPublicIP != -1 and accountcus['CU_I'] != -1 and maxNumPublicIP > avaliablepublicips:
-                raise exceptions.BadRequest("Owning account has only %s unreserved public IPs, "
-                                            "cannot reserve %s for this cloudspace" %
-                                            (avaliablepublicips, maxNumPublicIP))
-        return True
-
     @authenticator.auth(acl={'cloudspace': set('A')})
     def addAllowedSize(self, cloudspaceId, sizeId, **kwargs):
         """
@@ -655,7 +476,7 @@ class cloudapi_cloudspaces(BaseActor):
             cloudspace.allowedVMSizes = allowedVMSizes
 
         if maxMemoryCapacity or maxVDiskCapacity or maxCPUCapacity or maxNetworkPeerTransfer or maxNumPublicIP:
-            self._validateAvaliableAccountResources(cloudspace, maxMemoryCapacity,
+            self.cb.cloudspace._validateAvaliableAccountResources(cloudspace, maxMemoryCapacity,
                                                     maxVDiskCapacity, maxCPUCapacity,
                                                     maxNetworkPeerTransfer, maxNumPublicIP)
 
