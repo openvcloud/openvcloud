@@ -268,7 +268,7 @@ class CloudSpace(object):
 
         return cloudspace
 
-    def _validateAvaliableAccountResources(self, cloudspace, maxMemoryCapacity=None,
+    def validateAvaliableAccountResources(self, cloudspace, maxMemoryCapacity=None,
                                            maxVDiskCapacity=None, maxCPUCapacity=None,
                                            maxNetworkPeerTransfer=None, maxNumPublicIP=None, excludecloudspace=True):
         """
@@ -454,7 +454,7 @@ class CloudSpace(object):
         # validation earlier that maxNumPublicIP > 0 (or -1 meaning unlimited), this check will
         # make sure that 1 Public IP address will be reserved for this cloudspace
         try:
-            self._validateAvaliableAccountResources(cs, maxMemoryCapacity, maxVDiskCapacity,
+            self.validateAvaliableAccountResources(cs, maxMemoryCapacity, maxVDiskCapacity,
                                                     maxCPUCapacity, maxNetworkPeerTransfer, maxNumPublicIP)
         except:
             self.network.releaseExternalIpAddress(pool, str(externalipaddress))

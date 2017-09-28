@@ -218,7 +218,7 @@ class cloudbroker_cloudspace(BaseActor):
         maxNumPublicIP = resourcelimits['CU_I']
 
         return self.cb.cloudspace.create(accountId=accountId, locationId=locationId, name=name,
-                                         access=access, stackId=None, maxMemoryCapacity=maxMemoryCapacity,
+                                         access=access, stackId=stackId, maxMemoryCapacity=maxMemoryCapacity,
                                          maxVDiskCapacity=maxVDiskCapacity, maxCPUCapacity=maxCPUCapacity,
                                          maxNetworkPeerTransfer=maxNetworkPeerTransfer,
                                          maxNumPublicIP=maxNumPublicIP, externalnetworkId=externalnetworkId,

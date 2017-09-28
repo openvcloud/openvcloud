@@ -476,7 +476,7 @@ class cloudapi_cloudspaces(BaseActor):
             cloudspace.allowedVMSizes = allowedVMSizes
 
         if maxMemoryCapacity or maxVDiskCapacity or maxCPUCapacity or maxNetworkPeerTransfer or maxNumPublicIP:
-            self.cb.cloudspace._validateAvaliableAccountResources(cloudspace, maxMemoryCapacity,
+            self.cb.cloudspace.validateAvaliableAccountResources(cloudspace, maxMemoryCapacity,
                                                     maxVDiskCapacity, maxCPUCapacity,
                                                     maxNetworkPeerTransfer, maxNumPublicIP)
 
