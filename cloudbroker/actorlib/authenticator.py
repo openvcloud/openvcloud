@@ -102,7 +102,7 @@ class auth(object):
                 return func(*args, **kwargs)
             ctx = kwargs['ctx']
             ctx.env['JS_AUDIT'] = True
-            tags = j.data.tags.getObject()
+            tags = j.data.tags.getObject(ctx.env['tags'])
             user = ctx.env['beaker.session']['user']
             account = None
             cloudspace = None

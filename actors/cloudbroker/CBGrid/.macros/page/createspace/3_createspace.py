@@ -11,6 +11,10 @@ def main(j, args, params, tags, tasklet):
     for location in models.Location.objects:
         locations.append((location.name, str(location.id)))
     externalnetworks = list()
+    stacks = [('Auto', '')]
+
+    for stack in models.Stack.objects(status='ENABLED'):
+        stacks.append((stack['name'], stack['id']))
 
     def network_sort(pool):
         return '%04d_%s' % (pool.vlan, pool.name)
@@ -27,6 +31,7 @@ def main(j, args, params, tags, tasklet):
     popup.addText('Name', 'name', required=True)
     popup.addText('Username to grant access', 'access', required=True)
     popup.addDropdown('Choose Location', 'locationId', locations)
+    popup.addDropdown('Choose Stack', 'stackId', stacks)
     popup.addDropdown('Choose External Network', 'externalnetworkId', externalnetworks)
     popup.addText('Max Memory Capacity (GB)', 'maxMemoryCapacity', placeholder=culimitplaceholder, type='float')
     popup.addText('Max VDisk Capacity (GB)', 'maxVDiskCapacity', placeholder=culimitplaceholder, type='number')
