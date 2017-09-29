@@ -21,7 +21,7 @@ class MachineManager(BaseManager):
         if disks is None:
             disks = machine.disks
         for disk in disks:
-            clusterId, volId = disk.referenceId.split(':')
+            _, volId = disk.referenceId.split(':')
             data_disks.append({'maxIOps': disk.iops,
                                'vdiskid': volId
                                })
