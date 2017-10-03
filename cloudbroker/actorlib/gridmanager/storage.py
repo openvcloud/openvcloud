@@ -22,7 +22,7 @@ class StorageManager(BaseManager):
         volume.update({'size': disk.size,
                        'blocksize': 4096,
                        'id': diskid,
-                       'blockStoragecluster': cluster,
+                       'vdiskstorage': vdiskstor['id'],
                        'type': VDISKTYPEMAP.get(disk.type, 'boot'),
                        })
         self.client.vdiskstorage.CreateNewVdisk(volume, vdiskstor['id'])
@@ -31,10 +31,10 @@ class StorageManager(BaseManager):
 
     def deleteVolume(self, disk):
         if disk.referenceId:
-            cluster, volumeId = disk.referenceId.split(':')
-            self.client.vdisks.DeleteVdisk(volumeId)
+            vdiskstore, diskId = disk.referenceId.split(':')
+            self.client.vdiskstorage.DeleteVdisk(diskId, vdiskstore)
 
     def rollbackVolume(self, disk, epoch):
         data = {'epoch': epoch}
-        cluster, volumeId = disk.referenceId.split(':')
-        self.client.vdisks.RollbackVdisk(data, volumeId)
+        vdiskstore, diskId = disk.referenceId.split(':')
+        self.client.vdiskstorage.RollbackVdisk(data, diskId, vdiskstore)
