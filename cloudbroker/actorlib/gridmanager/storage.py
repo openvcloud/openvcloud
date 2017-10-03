@@ -12,7 +12,7 @@ class StorageManager(BaseManager):
     def createVolume(self, disk, image=None):
         volume = {}
         if image:
-            volume['imageId'] = image.referenceId
+            volume['templatevdisk'] = image.referenceId
 
         vdiskstors = self.client.vdiskstorage.ListVdiskStorages().json()
         if not vdiskstors:
@@ -22,10 +22,10 @@ class StorageManager(BaseManager):
         volume.update({'size': disk.size,
                        'blocksize': 4096,
                        'id': diskid,
-                       'blockStoragecluster': cluster,
+                       'vdiskstorage': vdiskstor['id'],
                        'type': VDISKTYPEMAP.get(disk.type, 'boot'),
                        })
-        self.client.vdiskstorage.CreateNewVdisk(volume, vdiskstor['id'])
+        self.client.vdisks.CreateNewVdisk(volume)
         disk.referenceId = '{}:{}'.format(vdiskstor['id'], diskid)
         disk.modify(referenceId=disk.referenceId)
 
