@@ -12,7 +12,7 @@ class StorageManager(BaseManager):
     def createVolume(self, disk, image=None):
         volume = {}
         if image:
-            volume['templatevdisk'] = image.referenceId
+            volume['imageId'] = image.referenceId
 
         vdiskstors = self.client.vdiskstorage.ListVdiskStorages().json()
         if not vdiskstors:
