@@ -25,7 +25,7 @@ class StorageManager(BaseManager):
                        'vdiskstorage': vdiskstor['id'],
                        'type': VDISKTYPEMAP.get(disk.type, 'boot'),
                        })
-        self.client.vdiskstorage.CreateNewVdisk(volume)
+        self.client.vdiskstorage.CreateNewVdisk(volume, vdiskstor['id'])
         disk.referenceId = '{}:{}'.format(vdiskstor['id'], diskid)
         disk.modify(referenceId=disk.referenceId)
 
