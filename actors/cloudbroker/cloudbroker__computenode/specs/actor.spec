@@ -7,7 +7,7 @@
         """
         Set the computenode status, options are 'ENABLED(creation and actions on machines is possible)','DISABLED(Only existing machines are started)', 'HALTED(Machine is not available'
         """
-        var:id int,, id of the computenode
+        var:id str,, id of the computenode
         var:locationId str,, the grid this computenode belongs to
         var:status str,, status (ENABLED, MAINTENANCE, DECOMMISSIONED).
         result: str
@@ -26,8 +26,7 @@
         """
         Enable a stack
         """
-        var:id int,,id of the computenode
-        var:locationId str,,the grid this computenode belongs to
+        var:id str,,id of the computenode
         var:message str,,message. Must be less than 30 characters
         result: str
 
@@ -35,7 +34,7 @@
         """
         Enable stacks
         """
-        var:ids list(int),,ids of stacks to enable
+        var:ids list(str),,ids of stacks to enable
         result:bool
 
     method:list
@@ -68,7 +67,18 @@
         Migrates all machines to different computes
         Set the status to 'DECOMMISSIONED'
         """
-        var:id int,, id of the computenode
+        var:id str,, id of the computenode
         var:locationId str,, the grid this computenode belongs to
         var:message str,,message. Must be less than 30 characters
+        result: str
+
+
+    method:upgrade
+        """
+        upgrade node to new version
+        Set the status to 'ENABLED'
+        """
+        var:id str,, id of the computenode
+        var:message str,,message. Must be less than 30 characters
+        var:force bool,,force. force upgrade
         result: str

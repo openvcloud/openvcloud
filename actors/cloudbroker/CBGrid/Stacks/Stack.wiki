@@ -13,12 +13,31 @@ h3. Stack: ${name}
   reload: false
   data:
    id: $$id
-   gid: ${gid}
   input:
    - type: text
      name: message
      label: Reason
      required: true
+
+- display: Upgrade
+  action: /restmachine/cloudbroker/computenode/upgrade
+  reload: true
+  data:
+   id: $$id
+  input:
+   - type: text
+     name: message
+     label: Reason
+     required: true
+
+   - type: dropdown
+     label: force reboot of the node
+     name: force
+     values:
+     - label: "Yes"
+       value: 1
+     - label: "No"
+       value: 0
 {% endif %}
 
 {% if status in ['ERROR', 'ENABLED'] %}
@@ -27,7 +46,6 @@ h3. Stack: ${name}
   reload: false
   data:
    id: ${id}
-   gid: ${gid}
   input:
    - type: message
      messagetype: warning
@@ -75,6 +93,9 @@ h3. Stack: ${name}
 * *Status*: [${status}|/grid/Error Condition?id=${eco}]
 {% else -%}
 * *Status*: ${status}
+{% endif -%}
+{% if version -%}
+* *Version*: ${version}
 {% endif %}
 
 h3. Images:

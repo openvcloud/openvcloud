@@ -2,12 +2,6 @@
     """
     iaas manager
     """
-    method:syncAvailableImagesToCloudbroker
-        """
-        synchronize IaaS Images from the libcloud model and cpunodes to the cloudbroker model
-        """
-        result:boolean
-
     method:addExternalNetwork
         """
         Adds a external network range to be used for cloudspaces
@@ -66,6 +60,12 @@
         Deletes unused size from location
         """
         var:size_id int,, Id of size to be deleted
+
+    method:syncImages
+        """
+        Sync Images
+        """
+        var:locationId str,, Id of the location to sync
 
     method:removeExternalIPs
         """

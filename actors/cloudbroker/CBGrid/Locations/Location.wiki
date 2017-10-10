@@ -7,6 +7,10 @@
 {% if id %}
 h3. Location: ${name}
 
+{% if apiUrl %}
+API Location: ${apiUrl}
+{% endif %}
+
 {{actions:
 - display: Update Location
   action: /restmachine/cloudbroker/location/update
@@ -39,6 +43,11 @@ h3. Location: ${name}
 
 - display: Sync Stacks
   action: /restmachine/cloudbroker/computenode/sync
+  data:
+   locationId: ${id}
+
+- display: Sync Images
+  action: /restmachine/cloudbroker/iaas/syncImages
   data:
    locationId: ${id}
 

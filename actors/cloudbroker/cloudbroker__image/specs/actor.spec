@@ -30,12 +30,16 @@
         var:imageId str,,id of image to be enabled
         result:bool
 
-    method:rename
+    method:edit
         """
-        rename image
+        edit image
         """
         var:imageId str,,id of image to be enabled
-        var:name str,,new name of image
+        var:name str,,new name of image @optional
+        var:type str,,new type of image @optional
+        var:description str,,new description of image @optional
+        var:username str,,new username of image @optional
+        var:password str,,new password of image @optional
         result:bool
 
     method:disable

@@ -71,7 +71,7 @@ class cloudbroker_computenode(BaseActor):
             stack = locationstacks.pop(nodeid, None)
             state = 'ENABLED' if status else 'INACTIVE'
             if stack:
-                stack.modify(status=state)
+                stack.modify(status=state, version=node['version'])
             else:
                 stack = self.models.Stack(
                     name=node['hostname'] or node['id'],
@@ -79,7 +79,8 @@ class cloudbroker_computenode(BaseActor):
                     type='Zero-OS',
                     status=state,
                     description='Zero-OS',
-                    location=location
+                    location=location,
+                    version=node['version']
                 )
                 stack.save()
         for node in locationstacks.values():
@@ -88,7 +89,7 @@ class cloudbroker_computenode(BaseActor):
     @auth(['level2', 'level3'], True)
     def enableStacks(self, ids, **kwargs):
         kwargs['ctx'].events.runAsync(self._enableStacks,
-                                      args=(ids, ),
+                                      args=(ids),
                                       kwargs=kwargs,
                                       title='Enabling Stacks',
                                       success='Successfully Scheduled Stacks Enablement',
@@ -100,20 +101,16 @@ class cloudbroker_computenode(BaseActor):
             self.enable(stack.id, stack.gid, '', **kwargs)
 
     @auth(['level2', 'level3'], True)
-    def enable(self, id, gid, message, **kwargs):
+    def enable(self, id, message, **kwargs):
         title = "Enabling Stack"
-        stack = self._getStack(id, gid)
+        stack = self._getStack(id)
         errorcb = functools.partial(self._errorcb, stack)
         status = self._changeStackStatus(stack, 'ENABLED')
-        startmachines = []
-        machines = self._get_stack_machines(id)
+        machines = self.models.VMachine.objects(tags__contains='stopped', stack=id, status__ne='DESTROYED')
+        stopped_machineIds = [machine.id for machine in machines]
         # loop on machines and get those that were running (have 'start' in tags)
-        for machine in machines:
-            tags = j.core.tags.getObject(machine['tags'])
-            if tags.labelExists("start"):
-                startmachines.append(machine['id'])
-        if startmachines:
-            j.apps.cloudbroker.machine.startMachines(startmachines, "", ctx=kwargs['ctx'])
+        if machines:
+            j.apps.cloudbroker.machine.startMachines(stopped_machineIds, "", ctx=kwargs['ctx'])
 
         kwargs['ctx'].events.runAsync(self._start_vfws,
                                       args=(stack, title, kwargs['ctx']),
@@ -124,6 +121,23 @@ class cloudbroker_computenode(BaseActor):
                                       errorcb=errorcb)
         return status
 
+    @auth(['level2', 'level3'], True)
+    def upgrade(self, id, message, force, **kwargs):
+        kwargs['ctx'].events.runAsync(self._upgradeStack,
+                                      args=(id, message, force),
+                                      kwargs=kwargs,
+                                      title='upgrading Stack',
+                                      success='Successfully Upgraded stack',
+                                      error='Failed to Upgrade Stacks')
+
+    def _upgradeStack(self, id, message, force, **kwargs):
+        stack = self.models.Stack.get(id)
+        version = self.cb.rebootStack(stack, force)
+        stack.version = version
+        stack.save()
+        responseMessage = "stack %s upgraded to version :\n %s" % (id, version)
+        return responseMessage
+
     def _get_stack_machines(self, stackId, fields=None):
         machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], stack=stackId)
         if fields:
@@ -131,13 +145,13 @@ class cloudbroker_computenode(BaseActor):
         return machines
 
     @auth(['level2', 'level3'], True)
-    def maintenance(self, id, gid, vmaction, **kwargs):
+    def maintenance(self, id, vmaction, **kwargs):
         """
         :param id: stack Id
-        :param gid: Grid id
         :param vmaction: what to do with vms stop or move
         :return: bool
         """
+        title = ""
         if vmaction not in ('move', 'stop'):
             raise exceptions.BadRequest("VMAction should either be move or stop")
 
@@ -154,8 +168,8 @@ class cloudbroker_computenode(BaseActor):
             stackmachines = self._get_stack_machines(stackId=stack.id)
             for machine in stackmachines:
                 if machine.status == 'RUNNING':
-                    if machine.tags is not None and 'start' not in machine.tags.split(" "):
-                        machine.tags += " %s" % (machine.id, 'start')
+                    if machine.tags is not None and 'stopped' not in machine.tags.split(" "):
+                        machine.tags += " %s" % (machine.id, 'stopped')
                         machine.save()
 
             title = 'Putting Node in Maintenance'

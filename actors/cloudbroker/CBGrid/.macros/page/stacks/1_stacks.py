@@ -44,6 +44,10 @@ def main(j, args, params, tags, tasklet):
             'name': 'Type',
             'value': 'type',
             'id': 'type'
+        }, {
+            'name': 'Version',
+            'value': 'version',
+            'id': 'version'
         }
     ]
 

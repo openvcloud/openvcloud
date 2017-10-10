@@ -52,9 +52,21 @@ class cloudbroker_image(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    def rename(self, imageId, name, **kwargs):
-        self._checkimage(imageId)
-        self.models.image.updateSearch({'id': imageId}, {'$set': {'name': name}})
+    def edit(self, imageId, name, description, type, username, password, **kwargs):
+        image = self._checkimage(imageId)
+        update = {}
+        if name:
+            image.name = name
+        if description:
+            image.description = description
+        if type:
+            image.type = type
+        if username:
+            image.username = username
+        if password:
+            image.password = password
+        image.save()
+    
 
     @auth(['level1', 'level2', 'level3'])
     def enable(self, imageId, **kwargs):

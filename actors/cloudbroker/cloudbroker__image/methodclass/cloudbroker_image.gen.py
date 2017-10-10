@@ -47,6 +47,20 @@ class cloudbroker_image(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method disable")
 
+    def edit(self, imageId, name, type, description, username, password, **kwargs):
+        """
+        edit image
+        param:imageId id of image to be enabled
+        param:name new name of image
+        param:type new type of image
+        param:description new description of image
+        param:username new username of image
+        param:password new password of image
+        result bool
+        """
+        #put your code here to implement this method
+        raise NotImplementedError ("not implemented method edit")
+
     def enable(self, imageId, **kwargs):
         """
         enable image
@@ -55,16 +69,6 @@ class cloudbroker_image(j.tools.code.classGetBase()):
         """
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method enable")
-
-    def rename(self, imageId, name, **kwargs):
-        """
-        rename image
-        param:imageId id of image to be enabled
-        param:name new name of image
-        result bool
-        """
-        #put your code here to implement this method
-        raise NotImplementedError ("not implemented method rename")
 
     def updateNodes(self, imageId, enabledStacks, **kwargs):
         """

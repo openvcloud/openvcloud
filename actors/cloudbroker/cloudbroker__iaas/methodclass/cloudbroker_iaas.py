@@ -3,6 +3,7 @@ from JumpScale9Portal.portal import exceptions
 import netaddr
 from JumpScale9Portal.portal.auth import auth
 from cloudbroker.actorlib.baseactor import BaseActor
+from cloudbroker.actorlib.gridmanager.client import getGridClient
 
 
 def checkIPS(network, ips):
@@ -185,12 +186,27 @@ class cloudbroker_iaas(BaseActor):
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    def syncAvailableImagesToCloudbroker(self, **kwargs):
+    def syncImages(self, locationId, **kwargs):
         """
-        synchronize IaaS Images from the libcloud model and cpunodes to the cloudbroker model
+        synchronize IaaS Images from 0-orchestrator to cloudbroker
         result boolean
         """
-        stacks = self.models.stack.list()
-        for stack in stacks:
-            self.cb.stackImportImages(stack)
+        location = self.models.Location.get(locationId)
+        if not location:
+            raise exceptions.BadRequest("Invalid location passed")
+        gc = getGridClient(location, self.models)
+        for storage in gc.storage.listVdiskStorages():
+            for image in gc.storage.listImages(storage['id']):
+                localimage = self.models.Image.objects(referenceId=image['name']).first()
+                if not localimage:
+                    localimage = self.models.Image(
+                        name=image['name'],
+                        referenceId=image['name'],
+                        vdiskstorage=storage['id'],
+                        size=image['size'],
+                        blocksize=image['diskBlockSize'],
+                        status='ENABLED',
+                        type='Imported Image'
+                    )
+                    localimage.save()
         return True

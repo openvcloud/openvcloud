@@ -37,11 +37,10 @@ class cloudbroker_computenode(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method decommission")
 
-    def enable(self, id, locationId, message, **kwargs):
+    def enable(self, id, message, **kwargs):
         """
         Enable a stack
         param:id id of the computenode
-        param:locationId the grid this computenode belongs to
         param:message message. Must be less than 30 characters
         result 
         """
@@ -97,3 +96,15 @@ class cloudbroker_computenode(j.tools.code.classGetBase()):
         """
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method sync")
+
+    def upgrade(self, id, message, force, **kwargs):
+        """
+        upgrade node to new version
+        Set the status to 'ENABLED'
+        param:id id of the computenode
+        param:message message. Must be less than 30 characters
+        param:force force. force upgrade
+        result 
+        """
+        #put your code here to implement this method
+        raise NotImplementedError ("not implemented method upgrade")

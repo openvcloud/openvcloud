@@ -95,10 +95,10 @@ class cloudbroker_iaas(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method removeExternalIPs")
 
-    def syncAvailableImagesToCloudbroker(self, **kwargs):
+    def syncImages(self, locationId, **kwargs):
         """
-        synchronize IaaS Images from the libcloud model and cpunodes to the cloudbroker model
-        result boolean
+        Sync Images
+        param:locationId Id of the location to sync
         """
         #put your code here to implement this method
-        raise NotImplementedError ("not implemented method syncAvailableImagesToCloudbroker")
+        raise NotImplementedError ("not implemented method syncImages")

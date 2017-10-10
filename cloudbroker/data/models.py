@@ -93,6 +93,8 @@ class Image(ModelBase):
     size = fields.IntField(required=True)
     type = fields.StringField(required=True)
     referenceId = fields.StringField(required=True)
+    vdiskstorage = fields.StringField()
+    blocksize = fields.IntField(default=4096)
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'CREATING', 'DELETING'])
     account = fields.ReferenceField(Account)
     acl = fields.EmbeddedDocumentListField(ACE)
@@ -117,6 +119,7 @@ class Stack(ModelBase):
     eco = fields.ReferenceField(Errorcondition)
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'ERROR', 'MAINTENANCE', 'INACTIVE'])
     location = fields.ReferenceField(Location)
+    version = fields.StringField()
 
 
 class Snapshot(EmbeddedDocument):

@@ -64,6 +64,21 @@ class CloudBroker(object):
 
         return capacityinfo[0]  # is sorted by least used
 
+    def rebootStack(self, stack, force):
+        client = getGridClient(stack.location, models)
+        force = bool(force)
+        data = {"force": force}
+        nodeid = stack.referenceId
+        client.rawclient.nodes.RebootNode(data, nodeid)
+        time.sleep(60)
+        getStatus = lambda: client.rawclient.nodes.GetNode(nodeid).json()
+        while True:
+            info = getStatus()
+            if info["status"] == 'running':
+                break
+            time.sleep(5)
+        return info["version"]
+
     def getCapacityInfo(self, location, client, image=None):
         resourcesdata = list()
         activenodes = [node['id'] for node in client.getActiveNodes()]
@@ -679,7 +694,7 @@ class Machine(object):
         hostname = machine.hostName
         userdata = {}
         if image.type.lower().strip() != 'windows':
-            userdata = {'users': [],
+            userdata = {'users': [{"name":'root', "ssh-authorized-keys": machine.publicsshkeys, 'shell': '/bin/bash'}],
                         # 'password': password  # might break cloud init reminder for further testing.
                         'ssh_pwauth': True,
                         'manage_etc_hosts': True,

@@ -8,15 +8,35 @@ h3. Image: ${image.name}
 - display: Image Availability
   action: '#image_update_cpu_nodes'
 
-- display: Rename
+- display: Edit
   input:
   - name: name
     label: Name
     type: text
-  - type: text
-    name: reason
-    label: Reason
-  action: /restmachine/cloudbroker/image/rename
+  - name: description
+    label: Description
+    type: text
+  - name: type
+    label: Type
+    type: dropdown
+    values:
+    - value: 
+      label: "Don't Change"
+    - value: Linux
+      label: Linux
+    - value: Windows
+      label: Windows
+    - value: Custom Image
+      label: Custom Image
+    - value: Imported Image
+      label: Imported Image
+  - name: username
+    label: Username
+    type: text
+  - name: password
+    label: Password
+    type: password
+  action: /restmachine/cloudbroker/image/edit
   data:
    imageId: $$id
 
@@ -53,9 +73,11 @@ h3. Image: ${image.name}
 
 * *Description*:${image.description}
 * *Type*:       ${image.type}
-* *Size*:       ${image.size}
+* *Size*:       ${image.size} GiB
 * *Status*:     ${image.status or "CREATED"}
 * *ReferenceId*:${image.referenceId}
+* *Username*:${image.username or ''}
+* *Password*:${image.password or ''}
 
 h4. Stacks which have this Image
 
