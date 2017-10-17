@@ -722,11 +722,12 @@ class cloudapi_machines(BaseActor):
         """
         machine = self.models.VMachine.get(machineId)
         if name:
-            self.cb.machine.assertName(machine.cloudspaceId, name)
+            self.cb.machine.assertName(machine.cloudspace, name)
             machine.name = name
         if description:
             machine.descr = description
-        return self.models.vmachine.set(machine)[0]
+        machine.save()
+        return str(machine.id)
 
     @authenticator.auth(acl={'machine': set('R')})
     def getConsoleUrl(self, machineId, **kwargs):
