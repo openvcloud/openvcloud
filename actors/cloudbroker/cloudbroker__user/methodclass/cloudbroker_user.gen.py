@@ -71,13 +71,3 @@ class cloudbroker_user(j.tools.code.classGetBase()):
         """
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method sendResetPasswordLink")
-
-    def updatePassword(self, username, password, **kwargs):
-        """
-        Update user's password
-        param:username id of user to reset password for
-        param:password new password
-        result bool
-        """
-        #put your code here to implement this method
-        raise NotImplementedError ("not implemented method updatePassword")

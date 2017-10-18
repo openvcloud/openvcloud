@@ -9,14 +9,6 @@
         """
         var:username str,,name of the user an authorization key is required for
 
-    method:updatePassword
-        """
-        Update user's password
-        """
-        var:username str,, id of user to reset password for
-        var:password str,, new password
-        result:bool
-
     method:sendResetPasswordLink
         """
         send reset password of user to their email address
