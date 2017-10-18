@@ -141,15 +141,12 @@ class cloudapi_portforwarding(BaseActor):
         :param localPort: local port
         :param protocol: protocol udp or tcp
         """
-        machineId = int(machineId)
-        cloudspaceId = int(cloudspaceId)
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
+        cloudspace = self.models.Cloudspace.get(cloudspaceId)
         forwards = cloudspace.forwardRules
-        id = int(id)
-        forward = forwards.pop(id, None)
+        forward = forwards.pop(id) if forwards else None
         if not forward:
             raise exceptions.NotFound('Cannot find the rule with id %s' % str(id))
-        machine = self.models.vmachine.get(machineId)
+        machine = self.models.VMachine.get(machineId)
         if machine.nics:
             if machine.nics[0].ipAddress != 'Undefined':
                 localIp = machine.nics[0].ipAddress
@@ -157,17 +154,14 @@ class cloudapi_portforwarding(BaseActor):
                 raise exceptions.NotFound('No correct ipaddress found for machine with id %s' % machineId)
         if self._selfcheckduplicate(cloudspace, publicIp, publicPort, protocol):
             raise exceptions.Conflict("Forward for %s with port %s already exists" % (publicIp, publicPort))
-        self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                            {'$pull': {'forwardRules': {'fromAddr': forward['fromAddr'],
-                                                                        'fromPort': forward['fromPort']}}})
+        cloudspace.modify(pull__forwardRules=forward)
         forward['fromAddr'] = publicIp
         forward['fromPort'] = publicPort
         forward['toAddr'] = localIp
         forward['toPort'] = localPort
         forward['protocol'] = protocol
+        cloudspace.modify(push__forwardRules=forward)
         self.netmgr.update(cloudspace)
-        self.models.cloudspace.updateSearch({'id': cloudspace.id},
-                                            {'$push': {'forwardRules': forward}})
         return self._process_list(cloudspace.forwardRules, cloudspaceId)
 
     def _process_list(self, forwards, cloudspace):

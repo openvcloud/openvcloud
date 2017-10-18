@@ -463,8 +463,9 @@ class cloudapi_cloudspaces(BaseActor):
         :return: True if update was successful
         """
         cloudspace = self.models.Cloudspace.get(cloudspaceId)
-        active_cloudspaces = self._listActiveCloudSpaces(cloudspace.accountId)
-        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only('id', 'size', 'disks')
+        active_cloudspaces = self._listActiveCloudSpaces(cloudspace.account.id)
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only(
+            'id', 'vcpus', 'disks', 'memory')
 
         if name in [space['name'] for space in active_cloudspaces] and name != cloudspace.name:
             raise exceptions.Conflict('Cloud Space with name %s already exists.' % name)
@@ -528,7 +529,7 @@ class cloudapi_cloudspaces(BaseActor):
             else:
                 cloudspace.resourceLimits['CU_I'] = maxNumPublicIP
         cloudspace.updateTime = int(time.time())
-        self.models.cloudspace.set(cloudspace)
+        cloudspace.save()
         return True
 
     # Unexposed actor
