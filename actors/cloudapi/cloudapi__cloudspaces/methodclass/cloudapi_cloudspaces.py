@@ -463,8 +463,9 @@ class cloudapi_cloudspaces(BaseActor):
         :return: True if update was successful
         """
         cloudspace = self.models.Cloudspace.get(cloudspaceId)
-        active_cloudspaces = self._listActiveCloudSpaces(cloudspace.accountId)
-        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only('id', 'size', 'disks')
+        active_cloudspaces = self._listActiveCloudSpaces(cloudspace.account.id)
+        machines = self.models.VMachine.objects(status__nin=['DESTROYED', 'ERROR'], cloudspace=cloudspace).only(
+            'id', 'vcpus', 'disks', 'memory')
 
         if name in [space['name'] for space in active_cloudspaces] and name != cloudspace.name:
             raise exceptions.Conflict('Cloud Space with name %s already exists.' % name)
@@ -528,7 +529,7 @@ class cloudapi_cloudspaces(BaseActor):
             else:
                 cloudspace.resourceLimits['CU_I'] = maxNumPublicIP
         cloudspace.updateTime = int(time.time())
-        self.models.cloudspace.set(cloudspace)
+        cloudspace.save()
         return True
 
     # Unexposed actor
@@ -552,28 +553,6 @@ class cloudapi_cloudspaces(BaseActor):
         consumedcudict['CU_I'] = self.getConsumedPublicIPs(cloudspace)
 
         return consumedcudict
-
-    @authenticator.auth(acl={'cloudspace': set('X')})
-    def getDefenseShield(self, cloudspaceId, **kwargs):
-        """
-        Get information about the defense shield
-
-        param:cloudspaceId id of the cloudspace
-        :return dict with defense shield details
-        """
-        cloudspaceId = int(cloudspaceId)
-        cloudspace = self.models.cloudspace.get(cloudspaceId)
-        fwid = "%s_%s" % (cloudspace.gid, cloudspace.networkId)
-        fw = self.netmgr._getVFWObject(fwid)
-
-        pwd = str(uuid.uuid4())
-        self.netmgr.fw_set_password(fwid, 'admin', pwd)
-        urllocation = self.hrd.get('instance.openvcloud.cloudbroker.defense_proxy')
-        location = self.models.location.search({'gid': cloudspace.gid})[1]
-
-        url = '%s/ovcinit/%s/%s' % (urllocation, getIP(fw.host), location['locationCode'])
-        result = {'user': 'admin', 'password': pwd, 'url': url}
-        return result
 
     # Unexposed actor
     def checkAvailablePublicIPs(self, cloudspace, numips=1):

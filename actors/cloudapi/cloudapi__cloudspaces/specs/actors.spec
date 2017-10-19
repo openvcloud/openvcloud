@@ -121,13 +121,6 @@
         var:recursivedelete bool,False, recursively revoke access rights from related vmachines @optional
         result: bool, True if user access was revoked from cloudspace
 
-    method:getDefenseShield
-        """
-        Get information about the defense shield
-        """
-        var:cloudspaceId str,, id of the cloudspace
-        result: dict, dict with defense shield details
-
     method:getOpenvpnConfig @method:get,post
         """
         Get OpenVPN config file (in zip format) for specified cloudspace

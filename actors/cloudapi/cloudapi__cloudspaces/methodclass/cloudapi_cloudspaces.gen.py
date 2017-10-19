@@ -112,15 +112,6 @@ class cloudapi_cloudspaces(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method get")
 
-    def getDefenseShield(self, cloudspaceId, **kwargs):
-        """
-        Get information about the defense shield
-        param:cloudspaceId id of the cloudspace
-        result 
-        """
-        #put your code here to implement this method
-        raise NotImplementedError ("not implemented method getDefenseShield")
-
     def getOpenvpnConfig(self, cloudspaceId, **kwargs):
         """
         Get OpenVPN config file (in zip format) for specified cloudspace
