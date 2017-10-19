@@ -71,6 +71,8 @@ Running installVNC.py will do the following:
 3. Start noVNC by running websockify_ovc on port 8091.
 4. Create a vnc instance in our database.
 
+For development the url passed to the script will be   `http://<ip>:8091` where <ip> is the ip of the host.
+
 ```
 gig:js9:/opt/code/github/openvcloud/openvcloud/scripts$ python3 installVNC.py --help
 usage: installVNC.py [-h] -u URL
