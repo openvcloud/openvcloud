@@ -62,3 +62,20 @@ optional arguments:
   -e END, --end END     End IP of external network ex. 175.12.12.20
   -v VLAN, --vlan VLAN  VLAN for external network
 ```
+
+## Install noVNC
+
+Running installVNC.py will do the following:
+1. Install noVNC using prefab9.
+2. Copy apps/vncproxy/utils/websockify_ovc to the noVNC repo.
+3. Start noVNC by running websockify_ovc.
+4. Create a vnc instance in our database.
+
+```
+gig:js9:/opt/code/github/openvcloud/openvcloud/scripts$ python3 installVNC.py --help
+usage: installVNC.py [-h] -i IP
+
+optional arguments:
+  -h, --help      show this help message and exit
+  -i IP, --ip IP  IP on which the noVNC is running
+  ```

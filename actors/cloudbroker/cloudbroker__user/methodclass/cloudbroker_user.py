@@ -22,6 +22,15 @@ class cloudbroker_user(BaseActor):
         return self.cb.actors.cloudapi.users.authenticate(username=username, password=user['passwd'])
 
     @auth(['level1', 'level2', 'level3'])
+    def updatePassword(self, username, password, **kwargs):
+        user = self.cb.checkUser(username)
+        if not user:
+            raise exceptions.NotFound("User with name %s does not exists" % username)
+        user['passwd'] = hashlib.md5(password).hexdigest()
+        self.syscl.user.set(user)
+        return True
+
+    @auth(['level1', 'level2', 'level3'])
     def create(self, username, emailaddress, password, groups, **kwargs):
         groups = groups or []
         created = j.portal.tools.server.active.auth.createUser(

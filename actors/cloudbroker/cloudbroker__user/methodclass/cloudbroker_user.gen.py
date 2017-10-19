@@ -25,15 +25,6 @@ class cloudbroker_user(j.tools.code.classGetBase()):
         #put your code here to implement this method
         raise NotImplementedError ("not implemented method create")
 
-    def delete(self, username, **kwargs):
-        """
-        Delete a user
-        param:username id of user
-        result bool
-        """
-        #put your code here to implement this method
-        raise NotImplementedError ("not implemented method delete")
-
     def deleteByGuid(self, userguid, **kwargs):
         """
         Delete a user using the user guid
