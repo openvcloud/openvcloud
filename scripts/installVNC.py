@@ -2,13 +2,13 @@ from JumpScale9 import j
 from cloudbroker.data import Models
 
 
-def install(ip):
+def install(url):
     # create the vnc instance
-    url = 'http://{}:8091/vnc_auto.html?token='.format(ip)
+    vnc_url = '{}/vnc_auto.html?token='.format(url)
     models = Models()
-    if not models.VNC.find(query={"url": url}):
+    if not models.VNC.objects(url=vnc_url).count() > 0:
         vnc = models.VNC()
-        vnc.url = url
+        vnc.url = vnc_url
         vnc.save()
 
     # install noVNC
@@ -29,6 +29,6 @@ def install(ip):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--ip', help='IP on which the noVNC is running', required=True)
+    parser.add_argument('-u', '--url', help='URL for accessing noVNC', required=True)
     options = parser.parse_args()
-    install(options.ip)
+    install(options.url)

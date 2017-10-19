@@ -68,14 +68,15 @@ optional arguments:
 Running installVNC.py will do the following:
 1. Install noVNC using prefab9.
 2. Copy apps/vncproxy/utils/websockify_ovc to the noVNC repo.
-3. Start noVNC by running websockify_ovc.
+3. Start noVNC by running websockify_ovc on port 8091.
 4. Create a vnc instance in our database.
 
 ```
 gig:js9:/opt/code/github/openvcloud/openvcloud/scripts$ python3 installVNC.py --help
-usage: installVNC.py [-h] -i IP
+usage: installVNC.py [-h] -u URL
 
 optional arguments:
-  -h, --help      show this help message and exit
-  -i IP, --ip IP  IP on which the noVNC is running
+  -h, --help         show this help message and exit
+  -u URL, --url URL  URL for accessing noVNC
+
   ```

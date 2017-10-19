@@ -64,13 +64,10 @@ def websockify_init():
     cl = j.clients.portal.get(ip=opts.ovc_ip, port=opts.ovc_port)
     cl.system.usermanager.authenticate(name=opts.username, secret=opts.password)
     opts.target_cfg = cl
-    del opts.ovc_ip
-    del opts.ovc_port
-    del opts.username
-    del opts.password
 
     # Use internal service framework
-    server = WebSocketProxy(target_host=None, target_port=None, **opts.__dict__)
+    server = WebSocketProxy(target_host=None, target_port=None, listen_host=opts.listen_host,
+                            listen_port=opts.listen_port, web=opts.web, target_cfg=opts.target_cfg)
     server.start_server()
 
 if __name__ == '__main__':
