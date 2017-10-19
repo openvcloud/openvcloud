@@ -52,24 +52,14 @@ def websockify_init():
     parser.add_option("--ovc-ip", dest="ovc_ip",
                       help="Ip on which OVC is running", default="localhost")
     parser.add_option("--ovc-port", dest="ovc_port",
-                      help="Port on which OVC is running", default=8200)
+                      help="Port on which OVC is running", default=8200, type=int)
     parser.add_option("--host", dest="listen_host",
                       help="Host to run on", default="localhost")
     parser.add_option("--port", dest="listen_port",
-                      help="Port to run on", default=8091)
+                      help="Port to run on", default=8091, type=int)
     parser.add_option("--web", default=None, metavar="DIR",
                       help="run webserver on same port. Serve files from DIR.")
     (opts, args) = parser.parse_args()
-
-    try:
-        opts.listen_port = int(opts.listen_port)
-    except:
-        parser.error("Error parsing listen port")
-
-    try:
-        opts.ovc_port = int(opts.ovc_port)
-    except:
-        parser.error("Error parsing ovc port")
 
     cl = j.clients.portal.get(ip=opts.ovc_ip, port=opts.ovc_port)
     cl.system.usermanager.authenticate(name=opts.username, secret=opts.password)
