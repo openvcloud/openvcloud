@@ -7,7 +7,7 @@ def install(url):
     vnc_url = '{}/vnc_auto.html?token='.format(url)
     models = Models()
     if models.VNC.objects(url=vnc_url).count() == 0:
-        vnc = models.VNC(url=vnc_url).save()
+        models.VNC(url=vnc_url).save()
 
     # install noVNC
     j.tools.prefab.local.apps.novnc.install()
