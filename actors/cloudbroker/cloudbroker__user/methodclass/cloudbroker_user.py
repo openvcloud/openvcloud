@@ -26,8 +26,8 @@ class cloudbroker_user(BaseActor):
         user = self.cb.checkUser(username)
         if not user:
             raise exceptions.NotFound("User with name %s does not exists" % username)
-        user['passwd'] = hashlib.md5(password).hexdigest()
-        self.syscl.user.set(user)
+        user['passwd'] = password
+        user.save()
         return True
 
     @auth(['level1', 'level2', 'level3'])
