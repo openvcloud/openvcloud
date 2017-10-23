@@ -288,7 +288,6 @@ class cloudapi_cloudspaces(BaseActor):
         useraccess = Q(acl__userGroupId=user)
         notdestroyed = Q(status__ne='DESTROYED')
         accountaccess = set(ac.id for ac in self.models.Account.objects(useraccess, notdestroyed).only('id'))
-        q = {'account': {'$in': list(accountaccess)}}
         cloudspaceaccess.update(cs.id for cs in self.models.Cloudspace.objects(notdestroyed, account__in=accountaccess).only('id'))
 
         # get cloudspaces access via atleast one vm
