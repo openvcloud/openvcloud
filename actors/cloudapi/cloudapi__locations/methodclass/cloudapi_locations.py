@@ -10,7 +10,7 @@ class cloudapi_locations(BaseActor):
         :return list with every element containing details of a location as a dict
         """
         results = []
-        for location in self.models.Location.objects:
+        for location in self.models.Location.objects.only('id', 'name'):
             results.append(location.to_dict())
         return results
 
