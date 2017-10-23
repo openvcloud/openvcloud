@@ -2,6 +2,7 @@ from js9 import j
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib import authenticator, network, netmgr
 from cloudbroker.actorlib.baseactor import BaseActor
+from mongoengine import Q
 import netaddr
 import uuid
 import time
@@ -284,19 +285,18 @@ class cloudapi_cloudspaces(BaseActor):
         cloudspaceaccess = set()
 
         # get cloudspaces access via account
-        q = {'acl.userGroupId': user}
-        accountaccess = set(ac.id for ac in self.models.Account.find(q).only('id'))
+        useraccess = Q(acl__userGroupId=user)
+        notdestroyed = Q(status__ne='DESTROYED')
+        accountaccess = set(ac.id for ac in self.models.Account.objects(useraccess, notdestroyed).only('id'))
         q = {'account': {'$in': list(accountaccess)}}
-        cloudspaceaccess.update(cs.id for cs in self.models.Cloudspace.find(q).only('id'))
+        cloudspaceaccess.update(cs.id for cs in self.models.Cloudspace.objects(notdestroyed, account__in=accountaccess).only('id'))
 
         # get cloudspaces access via atleast one vm
-        q = {'acl.userGroupId': user, 'status': {'$ne': 'DESTROYED'}}
-        cloudspaceaccess.update(vm['cloudspaceId'] for vm in self.models.VMachine.find(q).only('id'))
+        cloudspaceaccess.update(vm['cloudspaceId'] for vm in self.models.VMachine.objects(useraccess, notdestroyed).only('id'))
 
-        q = {"$or": [{"acl.userGroupId": user},
-                     {"id": {"$in": list(cloudspaceaccess)}}],
-             "status": {"$ne": "DESTROYED"}}
-        cloudspaces = self.models.Cloudspace.find(q)
+        cloudspaces = self.models.Cloudspace.objects(
+            (useraccess | Q(id__in=cloudspaceaccess)) & notdestroyed
+        )
 
         result = list()
         for cloudspaceobj in cloudspaces:
