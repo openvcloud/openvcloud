@@ -197,7 +197,7 @@ class cloudbroker_iaas(BaseActor):
         gc = getGridClient(location, self.models)
         for storage in gc.storage.listVdiskStorages():
             for image in gc.storage.listImages(storage['id']):
-                localimage = self.models.Image.objects(referenceId=image['name']).first()
+                localimage = self.models.Image.objects(referenceId=image['name'], status__ne='DESTROYED').first()
                 if not localimage:
                     localimage = self.models.Image(
                         name=image['name'],
@@ -209,4 +209,5 @@ class cloudbroker_iaas(BaseActor):
                         type='Imported Image'
                     )
                     localimage.save()
+                    self.models.Stack.objects(location=location).update(add_to_set__images=localimage)
         return True
