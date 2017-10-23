@@ -9,7 +9,7 @@ def main(j, args, params, tags, tasklet):
     cloudspaceId = args.getTag("cloudspaceid")
     imageid = args.getTag('imageid')
     locationid = args.getTag('locationid')
-    filters = dict()
+    filters = {'status': {'$ne': 'DESTROYED'}}
 
     if stackid:
         filters['stack'] = bson.ObjectId(stackid)

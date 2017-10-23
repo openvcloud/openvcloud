@@ -3,7 +3,7 @@ def main(j, args, params, tags, tasklet):
     page = args.page
     modifier = j.portal.tools.html.htmlfactory.getPageModifierGridDataTables(page)
 
-    filters = dict()
+    filters = {'status': {'$ne': 'DESTROYED'}}
     accountId = args.getTag('accountId')
     if accountId:
         filters['account'] = bson.ObjectId(accountId)
