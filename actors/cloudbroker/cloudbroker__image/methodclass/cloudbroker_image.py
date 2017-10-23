@@ -98,7 +98,7 @@ class cloudbroker_image(BaseActor):
             raise exceptions.BadRequest("Image Unavailable, is it synced?")
         for stack in self.models.Stack.objects(images=image):
             if str(stack.id) not in enabledStacks:
-                stack.update(pull_images=image)
+                stack.update(pull__images=image)
             else:
                 enabledStacks.remove(str(stack.id))
 

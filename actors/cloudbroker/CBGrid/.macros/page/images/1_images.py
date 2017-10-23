@@ -5,7 +5,7 @@ def main(j, args, params, tags, tasklet):
     modifier = j.portal.tools.html.htmlfactory.getPageModifierGridDataTables(page)
 
     stackid = args.getTag('stackid')
-    filters = dict()
+    filters = {'status': {'$ne': 'DESTROYED'}}
     if stackid:
         stack = models.Stack.get(stackid)
         filters['_id'] = {'$in': [img.id for img in stack.images]}
