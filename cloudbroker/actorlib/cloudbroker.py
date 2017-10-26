@@ -754,7 +754,6 @@ class Machine(object):
     def move(self, machine, targetStack, force=False):
         stack = machine.stack
         client = getGridClient(stack.location, models)
-
         try:
             client.machine.move(machine.id, stack.referenceId, targetStack.referenceId)
         except Exception as e:
@@ -767,6 +766,9 @@ class Machine(object):
                     eco = j.errorhandler.processPythonExceptionObject(e)
                     self.cb.markProvider(stack, eco)
                     raise
+            eco = j.errorhandler.processPythonExceptionObject(e)
+            self.cb.markProvider(stack, eco)
+            raise
         return machine.id
 
     def get(self, machine):

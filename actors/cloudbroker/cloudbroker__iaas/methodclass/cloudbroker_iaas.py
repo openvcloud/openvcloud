@@ -33,8 +33,10 @@ class cloudbroker_iaas(BaseActor):
             if self.models.ExternalNetwork.objects(vlan=vlan).count() > 0:
                 raise exceptions.Conflict("VLAN {} is already in use by another external network")
         except netaddr.AddrFormatError as e:
-            raise exceptions.BadRequest(e.message)
+            raise exceptions.BadRequest(e.args[0])
 
+        if accountId and self.models.Account.objects(id=accountId, status__ne='DESTROYED').count() == 0:
+            raise exceptions.BadRequest("AccountId {} is not valid".format(accountId))
         pool = self.models.ExternalNetwork(
             location=locationId,
             gateway=gateway,

@@ -214,6 +214,7 @@ class cloudbroker_machine(BaseActor):
 
         self.cb.machine.move(vmachine, targetStack, force=force)
         vmachine.stack = targetStack
+        vmachine.status = self.cb.machine.status(vmachine)
         vmachine.save()
 
     @auth(['level1', 'level2', 'level3'])

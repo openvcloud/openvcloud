@@ -56,11 +56,18 @@ h3. Stack: ${name}
      name: vmaction
      label: Virtual Machine Action
      values:
-      - value: move
-        label: Move All Virtual Machines
+      - value: migrate
+        label: Migrate All Virtual Machines
       - value: stop
         label: Stop All Virtual Machines
-
+   - type: dropdown
+     name: force
+     label: Fallback to Stop VM if Life migration fails
+     values:
+      - value: true
+        label: Yes
+      - value: false
+        label: No
    - type: text
      name: message
      required: true

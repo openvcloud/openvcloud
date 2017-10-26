@@ -58,6 +58,7 @@
         """
         var:id str,, id of the computenode
         var:vmaction str,, what to do with running vms move or stop
+        var:force bool,, force to Stop VM if Life migration fails
         var:message str,,message. Must be less than 30 characters
         result: str
 

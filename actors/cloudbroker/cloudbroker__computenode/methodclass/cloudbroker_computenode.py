@@ -135,6 +135,7 @@ class cloudbroker_computenode(BaseActor):
         version = self.cb.rebootStack(stack, force)
         stack.version = version
         stack.save()
+        kwargs['ctx'].events.sendMessage('Stack', 'Stack %s upgraded to\n%s' % (stack.name, version))
         responseMessage = "stack %s upgraded to version :\n %s" % (id, version)
         return responseMessage
 
@@ -145,18 +146,16 @@ class cloudbroker_computenode(BaseActor):
         return machines
 
     @auth(['level2', 'level3'], True)
-    def maintenance(self, id, vmaction, **kwargs):
+    def maintenance(self, id, vmaction, force, **kwargs):
         """
         :param id: stack Id
-        :param vmaction: what to do with vms stop or move
+        :param vmaction: what to do with vms stop or migrate
         :return: bool
         """
         title = ""
-        if vmaction not in ('move', 'stop'):
-            raise exceptions.BadRequest("VMAction should either be move or stop")
-
+        if vmaction not in ('migrate', 'stop'):
+            raise exceptions.BadRequest("VMAction should either be migrate, stop")
         machines_actor = j.apps.cloudbroker.machine
-
         stack = self._getStack(id)
         errorcb = functools.partial(self._errorcb, stack)
         self._changeStackStatus(stack, "MAINTENANCE")
@@ -182,9 +181,9 @@ class cloudbroker_computenode(BaseActor):
                                           errorcb=errorcb)
             machineIds = [machine.id for machine in stackmachines]
             machines_actor.stopMachines(machineIds, "", ctx=kwargs['ctx'])
-        elif vmaction == 'move':
+        elif vmaction == 'migrate':
             kwargs['ctx'].events.runAsync(self._move_virtual_machines,
-                                          args=(stack, title, kwargs['ctx']),
+                                          args=(stack, title, kwargs['ctx'], force),
                                           kwargs={},
                                           title='Putting Node in Maintenance',
                                           success='Successfully moved all Virtual Machines',
@@ -207,7 +206,7 @@ class cloudbroker_computenode(BaseActor):
             cloudspace.status = 'DEPLOYED'
             cloudspace.save()
 
-    def _move_virtual_machines(self, stack, title, ctx):
+    def _move_virtual_machines(self, stack, title, ctx, force=True):
         machines_actor = j.apps.cloudbroker.machine
         stackmachines = self._get_stack_machines(stackId=stack.id)
         otherstacks = self.models.Stack.objects(location=stack.location, id__ne=stack.id)
@@ -216,7 +215,7 @@ class cloudbroker_computenode(BaseActor):
 
         for machine in stackmachines:
             ctx.events.sendMessage(title, 'Moving Virtual Machine %s' % machine['name'])
-            machines_actor.moveToDifferentComputeNode(machine['id'], reason='Disabling source', force=True)
+            machines_actor.moveToDifferentComputeNode(machine['id'], reason='Disabling source', force=force)
 
         # TODO: moving of vfw
         # vfwspaces = self.models.Cloudspace.objects(stack=stack)

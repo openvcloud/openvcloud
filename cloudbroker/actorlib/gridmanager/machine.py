@@ -64,7 +64,7 @@ class MachineManager(BaseManager):
         data = {
             "nodeid": trgtNodeId
         }
-        return self.client.nodes.MigrateVM(data=data, nodeid=nodeId, vmid='vm-{}'.format(machineId)).json()['status']
+        return self.client.nodes.MigrateVM(data=data, nodeid=nodeId, vmid='vm-{}'.format(machineId))
 
     def destroy(self, machineId, nodeId):
         try:
