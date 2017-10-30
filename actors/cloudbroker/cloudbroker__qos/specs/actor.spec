@@ -40,3 +40,11 @@
         """
         var:machineId str,, Id of the machine to limit
         result:bool
+
+    method:events
+        """
+        Handle qos events
+        """
+        var:event str,, Name of the event
+        var:state str,, State of the event
+        var:name str,, Name of the affected resource
