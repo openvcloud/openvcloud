@@ -106,17 +106,15 @@ class cloudbroker_qos(BaseActor):
             return
 
         if event == 'VM_QUARANTINE' and state == 'WARNING':
-            message = j.portal.tools.server.active.templates.render(
-                'cloudbroker/email/qos/vm_quarantine_warning.html', vm_name=vm_name)
+            template = 'cloudbroker/email/qos/vm_quarantine_warning.html'
         elif event == 'VM_QUARANTINE' and state == 'SUCCESS':
-            message = j.portal.tools.server.active.templates.render(
-                'cloudbroker/email/qos/vm_quarantine.html', vm_name=vm_name)
+            template = 'cloudbroker/email/qos/vm_quarantine.html'
         elif event == 'VM_UNQUARANTINE' and state == 'SUCCESS':
-            message = j.portal.tools.server.active.templates.render(
-                'cloudbroker/email/qos/vm_unquarantine.html', vm_name=vm_name)
+            template = 'cloudbroker/email/qos/vm_unquarantine.html'
         else:
             return
 
+        message = j.portal.tools.server.active.templates.render(template, vm_name=vm_name)
         j.clients.email.send(emails, self.config.get('supportemail'), 'CPU fair use alert', message)
 
     def events(self, event, state, name, **kwargs):
