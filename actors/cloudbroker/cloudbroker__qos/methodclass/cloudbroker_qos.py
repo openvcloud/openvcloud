@@ -83,11 +83,10 @@ class cloudbroker_qos(BaseActor):
         param:state the state of the event (WARNING, SUCCESS)
         param:name the name of the vm
         """
-        vms = self.cb.cbcl.VMachine.objects(id=name.replace('vm-', ''))
-        if not vms:
+        vm = self.cb.cbcl.VMachine.objects(id=name.replace('vm-', '')).first()
+        if not vm:
             return
 
-        vm = vms[0]
         vm_name = vm.name
 
         acls = list()
