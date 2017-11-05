@@ -1,4 +1,5 @@
 from js9 import j
+from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib.baseactor import BaseActor
 import itertools
@@ -117,6 +118,7 @@ class cloudbroker_qos(BaseActor):
         message = j.portal.tools.server.active.templates.render(template, vm_name=vm_name)
         j.clients.email.send(emails, self.config.get('supportemail'), 'CPU fair use alert', message)
 
+    @auth(['level1'])
     def events(self, event, state, name, **kwargs):
         """
         This will handle qos events
