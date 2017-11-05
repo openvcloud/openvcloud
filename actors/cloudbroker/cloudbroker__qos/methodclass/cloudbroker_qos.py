@@ -1,3 +1,5 @@
+from js9 import j
+from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib.baseactor import BaseActor
 import itertools
@@ -72,3 +74,57 @@ class cloudbroker_qos(BaseActor):
         vfw = self.vcl.virtualfirewall.get(vfwid)
         self.acl.executeJumpscript('cloudscalers', 'limitpublicnet', gid=vfw.gid, nid=vfw.nid,
                                    args={'networkId': cloudspace.networkId, 'rate': rate, 'burst': burst})
+
+    def vm_events(self, event, state, name):
+        """
+        This will handle vm qos events and send the relevant users emails notifying them
+
+        param:event the event to handle
+        param:state the state of the event (WARNING, SUCCESS)
+        param:name the name of the vm
+        """
+        vm = self.cb.cbcl.VMachine.objects(id=name.replace('vm-', '')).first()
+        if not vm:
+            return
+
+        vm_name = vm.name
+
+        acls = list()
+        acls.extend(vm.acl)
+        acls.extend(vm.cloudspace.acl)
+        acls.extend(vm.cloudspace.account.acl)
+        emails = set()
+
+        for acl in acls:
+            if acl.type != 'U':
+                continue
+            user = self.cb.checkUser(acl.userGroupId)
+            if user:
+                emails.update(user.emails)
+
+        if not emails:
+            return
+
+        if event == 'VM_QUARANTINE' and state == 'WARNING':
+            template = 'cloudbroker/email/qos/vm_quarantine_warning.html'
+        elif event == 'VM_QUARANTINE' and state == 'SUCCESS':
+            template = 'cloudbroker/email/qos/vm_quarantine.html'
+        elif event == 'VM_UNQUARANTINE' and state == 'SUCCESS':
+            template = 'cloudbroker/email/qos/vm_unquarantine.html'
+        else:
+            return
+
+        message = j.portal.tools.server.active.templates.render(template, vm_name=vm_name)
+        j.clients.email.send(emails, self.config.get('supportemail'), 'CPU fair use alert', message)
+
+    @auth(['level1'])
+    def events(self, event, state, name, **kwargs):
+        """
+        This will handle qos events
+
+        param:event the event to handle
+        param:state the state of the event (WARNING, SUCCESS)
+        param:name the name of the affected resource
+        """
+        if event.startswith('VM'):
+            self.vm_events(event, state, name)

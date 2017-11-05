@@ -2,6 +2,7 @@ from .storage import StorageManager
 from .net import NetworkManager
 from .machine import MachineManager
 from .graph import GraphManager
+from .webhook import WebhookManager
 from zeroos.orchestrator.client import APIClient
 import requests
 
@@ -40,6 +41,7 @@ class GridClient(object):
         self._storage = None
         self._machine = None
         self._graph = None
+        self._webhook = None
 
     @property
     def network(self):
@@ -64,6 +66,12 @@ class GridClient(object):
         if not self._storage:
             self._storage = StorageManager(self.rawclient, self.models)
         return self._storage
+
+    @property
+    def webhook(self):
+        if not self._webhook:
+            self._webhook = WebhookManager(self.rawclient, self.models)
+        return self._webhook
 
     def getActiveNodes(self):
         nodes = self.getNodes()

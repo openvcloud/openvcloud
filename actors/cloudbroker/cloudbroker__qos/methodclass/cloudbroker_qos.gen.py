@@ -13,6 +13,16 @@ class cloudbroker_qos(j.tools.code.classGetBase()):
         #cloudbroker_qos_osis.__init__(self)
 
 
+    def events(self, event, state, name, **kwargs):
+        """
+        Handle qos events
+        param:event Name of the event
+        param:state State of the event
+        param:name Name of the affected resource
+        """
+        #put your code here to implement this method
+        raise NotImplementedError ("not implemented method events")
+
     def limitCPU(self, machineId, **kwargs):
         """
         Limit CPU quota
