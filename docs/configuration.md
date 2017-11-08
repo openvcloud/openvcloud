@@ -1,6 +1,6 @@
 # Configuration
 
-Cloudbroker config is added in the default portal config files located at `/optvar/cfg/portals/main/config.yaml`
+Cloudbroker config is added in the default portal config files located at `portals/main/config.yaml` under j.dirs.CFGDIR.
 
 We added a special section for cloudbroker.
 Example:
