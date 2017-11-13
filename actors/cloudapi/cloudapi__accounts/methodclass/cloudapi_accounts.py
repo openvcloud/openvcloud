@@ -95,22 +95,6 @@ class cloudapi_accounts(BaseActor):
         account.update(add_to_set__acl=ace)
         return True
 
-    def create(self, name, access, maxMemoryCapacity=None, maxVDiskCapacity=None,
-               maxCPUCapacity=None, maxNetworkPeerTransfer=None, maxNumPublicIP=None, **kwargs):
-        """
-        Create a extra an account (Method not implemented)
-
-        :param name: name of account to create
-        :param access: list of ids of users which have full access to this account
-        :param maxMemoryCapacity: max size of memory in GB
-        :param maxVDiskCapacity: max size of aggregated vdisks in GB
-        :param maxCPUCapacity: max number of cpu cores
-        :param maxNetworkPeerTransfer: max sent/received network transfer peering
-        :param maxNumPublicIP: max number of assigned public IPs
-        :return int
-        """
-        raise NotImplementedError("Not implemented method create")
-
     @authenticator.auth(acl={'account': set('R')})
     def get(self, accountId, **kwargs):
         """

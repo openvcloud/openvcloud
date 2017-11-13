@@ -2,19 +2,6 @@
     """
     API Actor api for managing account
     """
-    method:create
-        """
-        Create a extra an account (Method not implemented)
-        """
-        var:name str,,name of account to create @tags validator:name
-        var:access list,,list of ids of users which have full access to this account
-        var:maxMemoryCapacity float,-1, max size of memory in GB
-        var:maxVDiskCapacity int,-1, max size of aggregated vdisks in GB
-        var:maxCPUCapacity int,-1, max number of cpu cores
-        var:maxNetworkPeerTransfer int,-1, max sent/received network transfer peering
-        var:maxNumPublicIP int,-1, max number of assigned public IPs
-        result:int, returns id of account created
-
     method:list
         """
         List all accounts the user has access to

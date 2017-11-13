@@ -72,7 +72,7 @@ class cloudbroker_location(BaseActor):
         ).save()
 
         auth_key = j.data.idgenerator.generateGUID()
-        user_name  = 'location_%s' % location.id
+        user_name = 'location_%s' % location.id
         j.portal.tools.server.active.auth.createUser(
             user_name, 'password', user_name, ['level1'], auth_key)
 
