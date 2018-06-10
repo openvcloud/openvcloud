@@ -1,7 +1,6 @@
 from js9 import j
 import time
 import gevent
-from cloudbroker.actorlib.gridmanager.client import getGridClient
 
 
 class Healthcheck:

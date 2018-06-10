@@ -1,6 +1,4 @@
 from datetime import datetime
-import json
-from cloudbroker.actorlib.gridmanager.client import getGridClient
 from gevent import Greenlet
 from js9 import j
 
@@ -31,7 +29,6 @@ def collect_stats():
     from cloudbroker import data
     import os
     import capnp
-    import netaddr
     redises = {}
     models = Models()
 

@@ -3,6 +3,8 @@ from mongoengine import EmbeddedDocument
 from js9 import j
 import json
 from JumpScale9Portal.data.models.Models import Base, Errorcondition
+from JumpScale9Lib.clients.zero_os.sal.Node import Node
+from urllib.parse import urlparse
 
 DB = 'openvcloud'
 
@@ -105,8 +107,6 @@ class Image(ModelBase):
 
 class Location(ModelBase):
     name = fields.StringField(required=True)
-    apiUrl = fields.StringField()
-    apiToken = fields.StringField()
 
 
 class Stack(ModelBase):
@@ -120,6 +120,15 @@ class Stack(ModelBase):
     status = fields.StringField(choices=['DISABLED', 'ENABLED', 'ERROR', 'MAINTENANCE', 'INACTIVE'])
     location = fields.ReferenceField(Location)
     version = fields.StringField()
+    apiUrl = fields.StringField()
+    apiToken = fields.StringField()
+
+    def get_sal(self):
+        parsedurl = urlparse(self.apiUrl)
+        if parsedurl.scheme == '':
+            parsedurl = urlparse("redis://{}".format(self.apiUrl))
+        client = j.clients.zos.get(instance=self.name, data={'host': parsedurl.hostname, 'password_': self.apiToken, 'port': parsedurl.port or 6379}, interactive=False)
+        return Node(client)
 
 
 class Snapshot(EmbeddedDocument):
