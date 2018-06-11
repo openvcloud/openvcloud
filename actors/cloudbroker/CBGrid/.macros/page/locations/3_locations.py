@@ -11,11 +11,14 @@ def main(j, args, params, tags, tasklet):
             val = ', '.join(val)
         filters[tag] = val
 
-    fieldnames = ['Name', 'API URL']
-    fieldids = ['name', 'apiUrl']
-    fieldvalues = ['[%(name)s|/CBGrid/location?id=%(id)s]', 'apiUrl']
-    tableid = modifier.addTableForModel('cloudbroker', 'location', fieldids, fieldnames,
-                                        fieldvalues, filters)
+    fields = [
+        {
+            'name': 'Name',
+            'value': '[%(name)s|/CBGrid/location?id=%(id)s]',
+            'id': 'name'
+        }
+    ]
+    tableid = modifier.addTableFromModel('cloudbroker', 'location', fields, filters)
     modifier.addSearchOptions('#%s' % tableid)
 
     params.result = page

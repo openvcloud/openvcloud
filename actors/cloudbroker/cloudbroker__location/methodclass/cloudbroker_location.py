@@ -1,9 +1,6 @@
-from urllib import parse
-from js9 import j
 from JumpScale9Portal.portal.auth import auth
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib.baseactor import BaseActor
-from cloudbroker.actorlib.gridmanager.client import getGridClient
 
 
 class cloudbroker_location(BaseActor):
@@ -51,35 +48,17 @@ class cloudbroker_location(BaseActor):
         self.models.NetworkIds.objects(location=location).delete()
 
         self.cb.actors.cloudbroker.user.delete('location_%s' % location.id)
-        client = getGridClient(location, self.models)
-        client.webhook.delete(str(location.id))
         location.delete()
         return True
 
     @auth(['level1', 'level2', 'level3'])
-    def add(self, name, apiUrl, apiToken, **kwargs):
+    def add(self, name, **kwargs):
         if self.models.Location.objects(name=name).count() > 0:
             raise exceptions.Conflict("Location with name %s already exists" % name)
-        location = self.models.Location(
-            name=name,
-            apiUrl=apiUrl,
-            apiToken=apiToken
-        )
+        location = self.models.Location(name=name)
         location.save()
         self.models.NetworkIds(
             location=location,
             freeNetworkIds=list(range(1, 1000))
         ).save()
-
-        auth_key = j.data.idgenerator.generateGUID()
-        user_name = 'location_%s' % location.id
-        j.portal.tools.server.active.auth.createUser(
-            user_name, 'password', user_name, ['level1'], auth_key)
-
-        client = getGridClient(location, self.models)
-        client.webhook.create(
-            str(location.id),
-            ['ork'],
-            parse.urljoin(self.config['portalurl'], '/restmachine/cloudbroker/qos/events?authkey=%s' % auth_key))
-
         return 'Location has been added successfully, do not forget to add and External Network'

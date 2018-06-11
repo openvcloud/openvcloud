@@ -1,7 +1,6 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib import enums, network, netmgr
-from .gridmanager.client import getGridClient
 from mongoengine.queryset.visitor import Q
 from .netmgr import NetManager
 import netaddr

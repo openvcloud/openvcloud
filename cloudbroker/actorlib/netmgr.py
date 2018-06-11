@@ -1,5 +1,4 @@
 from JumpScale9Portal.portal import exceptions
-from .gridmanager.client import getGridClient
 import requests.exceptions
 import netaddr
 

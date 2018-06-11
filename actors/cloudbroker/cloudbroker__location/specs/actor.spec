@@ -41,6 +41,4 @@
         Adds a location/grid
         """
         var:name str,, Name of the location @validator:name
-        var:apiUrl str,, Url of the location to add
-        var:apiToken str,, Token to authenticate with api @optional
         result: str

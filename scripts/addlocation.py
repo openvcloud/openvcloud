@@ -3,7 +3,7 @@ from cloudbroker.data import Models
 import netaddr
 
 
-def setup(locationurl, locationname, publiccidr, gateway, startrange, endrange, vlan):
+def setup(locationname, publiccidr, gateway, startrange, endrange, vlan):
     # ensure groups
     sysmodels = j.portal.tools.models.system
     groupnames = ['level1', 'level2', 'level3']
@@ -19,11 +19,10 @@ def setup(locationurl, locationname, publiccidr, gateway, startrange, endrange, 
         adminuser.save()
 
     models = Models()
-    location = models.Location.objects(name=locationname, apiUrl=locationurl).first()
+    location = models.Location.objects(name=locationname).first()
     if not location:
         location = models.Location(
             name=locationname,
-            apiUrl=locationurl
         )
         location.save()
 
@@ -52,27 +51,27 @@ def setup(locationurl, locationname, publiccidr, gateway, startrange, endrange, 
         externalnetwork.save()
 
     # add default images
-    images = [
-        ('Ubuntu 1604', 'ardb:///template:ubuntu-1604', 10, 'Linux', None, None),
-        ('Ubuntu 1604 GIG', 'ardb:///template:ovc:ubuntu-1604', 10, 'Linux', 'gig', 'rooter'),
-        ('Lede 17.01', 'ardb:///template:lede-1701', 1, 'Linux', None, None)
-    ]
-    disksizes = [10, 20, 50, 100, 250, 500, 1000, 2000]
+    # images = [
+    #     ('Ubuntu 1604', 'ardb:///template:ubuntu-1604', 10, 'Linux', None, None),
+    #     ('Ubuntu 1604 GIG', 'ardb:///template:ovc:ubuntu-1604', 10, 'Linux', 'gig', 'rooter'),
+    #     ('Lede 17.01', 'ardb:///template:lede-1701', 1, 'Linux', None, None)
+    # ]
+    # disksizes = [10, 20, 50, 100, 250, 500, 1000, 2000]
 
-    for name, url, size, type, login, password in images:
-        image = models.Image.objects(name=name, referenceId=url).first()
-        if not image:
-            image = models.Image(
-                name=name,
-                size=size,
-                type=type,
-                status='ENABLED',
-                username=login,
-                password=password,
-                disks=disksizes,
-                referenceId=url
-            )
-            image.save()
+    # for name, url, size, type, login, password in images:
+    #     image = models.Image.objects(name=name, referenceId=url).first()
+    #     if not image:
+    #         image = models.Image(
+    #             name=name,
+    #             size=size,
+    #             type=type,
+    #             status='ENABLED',
+    #             username=login,
+    #             password=password,
+    #             disks=disksizes,
+    #             referenceId=url
+    #         )
+    #         image.save()
 
 
 if __name__ == '__main__':

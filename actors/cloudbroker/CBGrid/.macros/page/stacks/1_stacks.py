@@ -37,10 +37,6 @@ def main(j, args, params, tags, tasklet):
             'value': 'status',
             'id': 'status'
         }, {
-            'name': 'Reference ID',
-            'value': 'referenceId',
-            'id': 'referenceId'
-        }, {
             'name': 'Type',
             'value': 'type',
             'id': 'type'

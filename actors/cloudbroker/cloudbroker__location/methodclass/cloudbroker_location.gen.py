@@ -13,12 +13,10 @@ class cloudbroker_location(j.tools.code.classGetBase()):
         #cloudbroker_location_osis.__init__(self)
 
 
-    def add(self, name, apiUrl, apiToken, **kwargs):
+    def add(self, name, **kwargs):
         """
         Adds a location/grid
         param:name Name of the location
-        param:apiUrl Url of the location to add
-        param:apiToken Token to authenticate with api
         result 
         """
         #put your code here to implement this method
