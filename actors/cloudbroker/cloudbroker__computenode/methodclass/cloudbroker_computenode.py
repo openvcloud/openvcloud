@@ -3,8 +3,6 @@ from JumpScale9Portal.portal.auth import auth
 import functools
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib.baseactor import BaseActor
-import random
-from cloudbroker.actorlib.gridmanager.client import getGridClient
 
 
 class cloudbroker_computenode(BaseActor):

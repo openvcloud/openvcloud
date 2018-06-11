@@ -1,7 +1,6 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
 from cloudbroker.actorlib import authenticator
-from cloudbroker.actorlib.gridmanager.client import getGridClient
 from cloudbroker.actorlib.baseactor import BaseActor
 
 
