@@ -57,7 +57,7 @@ def collect_stats():
     for account in accounts:
         folder_name = "%s/resourcetracking/active/%s/%s/%s/%s/%s" % \
                         (j.dirs.VARDIR, str(account.id), year, month, day, hour)
-        j.do.createDir(folder_name)
+        j.sal.fs.createDir(folder_name)
         cloudspaces = models.Cloudspace.objects(status__nin=['DISABLED', 'DESTROYED'], account=account)
         for cloudspace in cloudspaces:
             nodeid = cloudspace.stack.referenceId

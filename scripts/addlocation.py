@@ -77,7 +77,6 @@ def setup(locationname, publiccidr, gateway, startrange, endrange, vlan):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u', '--url', help='Location URL')
     parser.add_argument('-n', '--name', help='Location Name')
     parser.add_argument('-p', '--publiccidr', help='CIDR of external network ex. 175.12.12.0/24')
     parser.add_argument('-g', '--gateway', help='Gateway of external network ex. 175.12.12.1')
@@ -85,4 +84,4 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--end', help='End IP of external network ex. 175.12.12.20')
     parser.add_argument('-v', '--vlan', help='VLAN for external network', type=int)
     options = parser.parse_args()
-    setup(options.url, options.name, options.publiccidr, options.gateway, options.start, options.end, options.vlan)
+    setup(options.name, options.publiccidr, options.gateway, options.start, options.end, options.vlan)

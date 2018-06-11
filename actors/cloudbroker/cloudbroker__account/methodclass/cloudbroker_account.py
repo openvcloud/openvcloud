@@ -18,7 +18,8 @@ def _send_signup_mail(config, **kwargs):
     message = j.portal.tools.server.active.templates.render('cloudbroker/email/account/created.html', **kwargs)
     subject = j.portal.tools.server.active.templates.render('cloudbroker/email/account/created.subject.txt', **kwargs)
 
-    j.clients.email.send(toaddrs, fromaddr, subject, message, files=None)
+    mailclient = j.clients.email.get(interactive=False)
+    mailclient.send(toaddrs, fromaddr, subject, message, files=None)
 
 
 class cloudbroker_account(BaseActor):

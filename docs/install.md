@@ -6,18 +6,10 @@
 
 See JumpScale/developer install on [github](https://github.com/Jumpscale/developer)
 
-### Install mongodb
+### Install Portal
 
 ```
-js9 j.tools.prefab.local.apps.mongodb.install()
-```
-
-
-### Make sure you have 0-orchestrator client installed
-
-```
-export BRANCH=master
-pip3 install -U "git+https://github.com/zero-os/0-orchestrator.git@${BRANCH}#subdirectory=pyclient"
+js9 j.tools.prefab.local.web.portal.install()
 ```
 
 ### Add OpenvCloud contentdir and python library
@@ -32,8 +24,8 @@ cd openvcloud
 pip3 install -e .
 ```
 
-2. Add contentdir in `/opt/cfg/portals/main/config.yaml`:
-`contentdirs:  '/opt/code/github/openvcloud/openvcloud/actors'`
+2. Add contentdir in `/root/js9host/cfg/jumpscale9.toml`:
+`contentdirs=  "/opt/code/github/openvcloud/openvcloud/actors"`
 
 3. Also check the [config](configuration.md) for specific OpenvCloud configuration
 
@@ -46,12 +38,11 @@ js9 'j.tools.prefab.local.apps.portal.stop(); j.tools.prefab.local.apps.portal.s
 
 ```
 (gig) root@js9:/opt/code/github/openvcloud/openvcloud/scripts# python3 addlocation.py --help
-usage: addlocation.py [-h] [-u URL] [-n NAME] [-p PUBLICCIDR] [-g GATEWAY]
+usage: addlocation.py [-h] [-n NAME] [-p PUBLICCIDR] [-g GATEWAY]
                       [-s START] [-e END] [-v VLAN]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -u URL, --url URL     Location URL
   -n NAME, --name NAME  Location Name
   -p PUBLICCIDR, --publiccidr PUBLICCIDR
                         CIDR of external network ex. 175.12.12.0/24
