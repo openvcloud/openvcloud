@@ -57,25 +57,22 @@ class CloudBroker(object):
         if not capacityinfo:
             return -1
         capacityinfo = [node for node in capacityinfo if node['id'] not in excludelist]
-        if not capacityinfo:
-            return -1
-
-        return capacityinfo[0]  # is sorted by least used
+        for stack in capacityinfo:
+            try:
+                stack.get_sal().client.ping()
+                return stack
+            except Exception as e:
+                eco = j.errorhandler.processPythonExceptionObject(e)
+                stack.eco = eco.guid
+                stack.status = 'ERROR'
+                stack.save()
+        raise exceptions.ServiceUnavailable('No node available')
 
     def rebootStack(self, stack, force):
-        client = getGridClient(stack.location, models)
-        force = bool(force)
-        data = {"force": force}
-        nodeid = stack.referenceId
-        client.rawclient.nodes.RebootNode(data, nodeid)
-        time.sleep(60)
-        getStatus = lambda: client.rawclient.nodes.GetNode(nodeid).json()
-        while True:
-            info = getStatus()
-            if info["status"] == 'running':
-                break
-            time.sleep(5)
-        return info["version"]
+        client = stack.get_sal()
+        client.client.raw('core.reboot', {'force': force})
+        j.tools.time.execute_untill(client.client.ping, 60, 5)
+        return client.info.version()
 
     def getCapacityInfo(self, location, image=None):
         resourcesdata = list()

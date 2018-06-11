@@ -126,7 +126,7 @@ class Stack(ModelBase):
         parsedurl = urlparse(self.apiUrl)
         if parsedurl.scheme == '':
             parsedurl = urlparse("redis://{}".format(self.apiUrl))
-        client = j.clients.zos.get(instance=self.name, data={'host': parsedurl.hostname, 'password_': self.apiToken, 'port': parsedurl.port or 6379}, interactive=False)
+        client = j.clients.zos.get(instance=self.name, data={'host': parsedurl.hostname, 'password_': self.apiToken or '', 'port': parsedurl.port or 6379}, interactive=False)
         return Node(client)
 
 
