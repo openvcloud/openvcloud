@@ -53,8 +53,7 @@ class CloudBroker(object):
         stack.modify(eco=None, error=0, status='ENABLED')
 
     def getBestStack(self, location, image=None, excludelist=[]):
-        client = getGridClient(location, models)
-        capacityinfo = self.getCapacityInfo(location, client, image)
+        capacityinfo = self.getCapacityInfo(location, image)
         if not capacityinfo:
             return -1
         capacityinfo = [node for node in capacityinfo if node['id'] not in excludelist]
@@ -78,24 +77,20 @@ class CloudBroker(object):
             time.sleep(5)
         return info["version"]
 
-    def getCapacityInfo(self, location, client, image=None):
+    def getCapacityInfo(self, location, image=None):
         resourcesdata = list()
-        activenodes = [node['id'] for node in client.getActiveNodes()]
         if image:
-            stacks = models.Stack.objects(images=image, location=location)
+            stacks = models.Stack.objects(images=image, location=location, status='ENABLED')
         else:
-            stacks = models.Stack.objects(location=location)
+            stacks = models.Stack.objects(location=location, status='ENABLED')
         for stack in stacks:
-            if stack.status == 'ENABLED':
-                if stack.referenceId not in activenodes:
-                    continue
-                # search for all vms running on the stacks
-                usedvms = models.VMachine.objects(stack=stack, status__nin=MACHINE_INVALID_STATES)
-                if usedvms:
-                    stack.usedmemory = sum(vm.memory for vm in usedvms)
-                else:
-                    stack.usedmemory = 0
-                resourcesdata.append(stack)
+            # search for all vms running on the stacks
+            usedvms = models.VMachine.objects(stack=stack, status__nin=MACHINE_INVALID_STATES)
+            if usedvms:
+                stack.usedmemory = sum(vm.memory for vm in usedvms)
+            else:
+                stack.usedmemory = 0
+            resourcesdata.append(stack)
         resourcesdata.sort(key=lambda s: s.usedmemory)
         return resourcesdata
 
@@ -362,6 +357,7 @@ class CloudSpace(object):
                 cloudspace.modify(externalnetworkip=str(externalipaddress))
 
             externalipaddress = netaddr.IPNetwork(cloudspace.externalnetworkip)
+            cloudspace.stack = self.cb.getBestStack(cloudspace.location)
 
             try:
                 self.cb.netmgr.create(cloudspace)
@@ -370,7 +366,9 @@ class CloudSpace(object):
                 cloudspace.modify(status='VIRTUAL', externalnetworkip=None)
                 raise
 
-            cloudspace.modify(status='DEPLOYED', updateTime=int(time.time()))
+            cloudspace.status = 'DEPLOYED'
+            cloudspace.updateTime = int(time.time())
+            cloudspace.save()
             return 'DEPLOYED'
         except Exception as e:
             j.errorhandler.processPythonExceptionObject(e, message="Cloudspace deploy aysnc call exception.")
@@ -475,7 +473,6 @@ class CloudSpace(object):
             self.cb.releaseNetworkId(location, networkid)
             raise
 
-        # deploy async.
         cs.save()
         try:
             self.deploy(cs)

@@ -94,7 +94,7 @@ h3. Stack: ${name}
 {% endif %}
 
 * *Description*: ${descr}
-* *ReferenceId*: ${referenceId}
+* *API URL*: ${apiUrl}
 * *Statistics*: [Statistics|/cbgrid/Statistics?id=${id}]
 {% if eco -%}
 * *Status*: [${status}|/grid/Error Condition?id=${eco}]

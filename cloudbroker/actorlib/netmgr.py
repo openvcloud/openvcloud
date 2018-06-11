@@ -1,5 +1,3 @@
-from JumpScale9Portal.portal import exceptions
-import requests.exceptions
 import netaddr
 
 DEFAULTCIDR = '192.168.112.254/24'
@@ -19,11 +17,12 @@ class NetManager(object):
         """
         param:cloudspace
         """
-        nodeid, corexid = self.get_container(cloudspace)
-        client = getGridClient(cloudspace.location, self.models)
         name = 'vfw_{}'.format(cloudspace.id)
         data = self.get_config(cloudspace, name)
-        client.rawclient.nodes.CreateGW(data, nodeid)
+        client = cloudspace.stack.get_sal()
+        gw = client.gateways.get(name)
+        gw.from_dict(data)
+        gw.deploy()
 
     def get_config(self, cloudspace, name):
         externalnetwork = cloudspace.externalnetwork
@@ -72,7 +71,8 @@ class NetManager(object):
             rule = {
                 'protocols': [portforward.protocol],
                 'srcport': portforward.fromPort,
-                'srcip': portforward.fromAddr,
+                'srcnetwork': 'external',
+                'name': '{}:{}'.format(portforward.fromAddr, portforward.fromPort),
                 'dstport': portforward.toPort,
                 'dstip': portforward.toAddr
             }
@@ -83,45 +83,28 @@ class NetManager(object):
             'domain': 'lan',
             'hostname': name,
             'portforwards': portforwards,
-            'nics': [privatenic, publicnic]
+            'networks': [privatenic, publicnic]
         }
         return data
 
     def get_machines(self, cloudspaceId):
         return self.models.VMachine.objects(cloudspace=cloudspaceId, status__in=['RUNNING', 'PAUSED', 'HALTED'])
 
-    def update(self, cloudspace, nodeid=None, corexid=None):
-        if not nodeid or not corexid:
-            nodeid, name = self.get_container(cloudspace)
-        client = getGridClient(cloudspace.location, self.models)
-        data = self.get_config(cloudspace, name)
-        client.rawclient.nodes.UpdateGateway(data, name, nodeid)
-
-    def get_container(self, cloudspace):
-        name = 'vfw_{}'.format(cloudspace.id)
-        if cloudspace.stack:
-            nodeid = cloudspace.stack.referenceId
-        else:
-            stack = self.cb.getBestStack(cloudspace.location)
-            if stack == -1:
-                raise exceptions.ServiceUnavailable("Could not finder provider to deploy virtual router")
-            cloudspace.modify(stack=stack)
-            nodeid = stack.referenceId
-        return nodeid, name
+    def update(self, cloudspace):
+        # currently update and create do the same thing (through sal magic)
+        return self.create(cloudspace)
 
     def destroy(self, cloudspace):
         """
         """
-        nodeid, corexid = self.get_container(cloudspace)
-        if corexid:
-            client = getGridClient(cloudspace.location, self.models)
-            try:
-                client.rawclient.nodes.DeleteGateway(corexid, nodeid)
-            except requests.exceptions.HTTPError as e:
-                # allow 404 this means the container does not exists
-                if e.response.status_code != 404:
-                    raise
-            cloudspace.modify(status='VIRTUAL', stack=None)
+        if cloudspace.stack:
+            client = cloudspace.stack.get_sal()
+            name = 'vfw_{}'.format(cloudspace.id)
+            gw = client.gateways.get(name)
+            gw.stop()
+            cloudspace.stack = None
+        cloudspace.status = 'VIRTUAL'
+        cloudspace.save()
 
     def getFreeIPAddress(self, cloudspace):
         machines = self.get_machines(cloudspace.id)

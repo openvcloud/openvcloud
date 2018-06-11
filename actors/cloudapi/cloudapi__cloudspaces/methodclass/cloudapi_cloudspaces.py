@@ -1,12 +1,10 @@
 from js9 import j
 from JumpScale9Portal.portal import exceptions
-from cloudbroker.actorlib import authenticator, network, netmgr
+from cloudbroker.actorlib import authenticator, network
 from cloudbroker.actorlib.baseactor import BaseActor
 from mongoengine import Q
 import netaddr
-import uuid
 import time
-import gevent
 
 
 def getIP(network):
@@ -161,9 +159,11 @@ class cloudapi_cloudspaces(BaseActor):
         :return: True if update was successful
         :return int with id of created cloudspace
         """
-        return self.cb.cloudspace.create(accountId, locationId, name, access, maxMemoryCapacity=-1, maxVDiskCapacity=-1,
-                                         maxCPUCapacity=-1, maxNetworkPeerTransfer=-1, maxNumPublicIP=-1,
-                                         externalnetworkId=None, allowedVMSizes=[], **kwargs)
+        return self.cb.cloudspace.create(accountId, locationId, name, access,
+                                         maxMemoryCapacity=maxMemoryCapacity, maxVDiskCapacity=maxVDiskCapacity,
+                                         maxCPUCapacity=maxCPUCapacity, maxNetworkPeerTransfer=maxNetworkPeerTransfer,
+                                         maxNumPublicIP=maxNumPublicIP, externalnetworkId=externalnetworkId,
+                                         allowedVMSizes=allowedVMSizes, **kwargs)
 
     @authenticator.auth(acl={'cloudspace': set('C')})
     def deploy(self, cloudspaceId, **kwargs):
